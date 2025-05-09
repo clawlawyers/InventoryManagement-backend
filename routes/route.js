@@ -1,14 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  getAllManagers,
-  getCompaniesByManager,
-  getInventoriesByCompany,
-} = require("../controllers/controller");
+// Import route modules
+const managerRoutes = require("./managerRoutes");
+const companyRoutes = require("./companyRoutes");
 
-router.get("/managers", getAllManagers);
-router.post("/companies", getCompaniesByManager);
-router.post("/inventories", getInventoriesByCompany);
+// Mount routes
+router.use("/managers", managerRoutes);
+router.use("/companies", companyRoutes);
 
 module.exports = router;

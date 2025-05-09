@@ -25,3 +25,5 @@ const SalesmanSchema = new Schema({
     required: true,
   },
 });
+
+module.exports = mongoose.model("Salesman", SalesmanSchema);
