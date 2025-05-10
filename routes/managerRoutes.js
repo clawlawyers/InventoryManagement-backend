@@ -1,9 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { getAllManagers, getCompaniesByManager } = require("../controllers/managerController");
+const {
+  getAllManagers,
+  getCompaniesByManager,
+  createManager,
+} = require("../controllers/managerController");
 
 // Manager routes
 router.get("/", getAllManagers);
-router.post("/companies", getCompaniesByManager);
+router.get("/companies", getCompaniesByManager);
+router.post("/", createManager);
 
 module.exports = router;

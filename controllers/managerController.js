@@ -10,7 +10,15 @@ const getAllManagers = async (req, res) => {
   }
 };
 
-// POST: Get companies by manager ID
+const createManager = async (req, res) => {
+  try {
+    const manager = new Manager(req.body);
+    await manager.save();
+    res.status(201).json(manager);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
 const getCompaniesByManager = async (req, res) => {
   try {
     const { managerId } = req.body;
@@ -29,4 +37,5 @@ const getCompaniesByManager = async (req, res) => {
 module.exports = {
   getAllManagers,
   getCompaniesByManager,
+  createManager,
 };

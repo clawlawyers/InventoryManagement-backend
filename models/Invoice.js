@@ -1,13 +1,18 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const clientSchema = {
+const InvoiceSchema = new Schema({
   name: {
     type: String,
     required: true,
   },
   address: {
     type: String,
+    required: true,
+  },
+  item: {
+    type: schema.Types.ObjectId,
+    ref: "Inventory",
     required: true,
   },
   purchased: {
@@ -26,6 +31,6 @@ const clientSchema = {
     type: Number,
     default: 0,
   },
-};
+});
 
-module.exports = clientSchema;
+module.exports = mongoose.model("Invoice", InvoiceSchema);

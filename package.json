@@ -7,7 +7,10 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "node index"
+    "test": "node index",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "seed": "node scripts/seedDatabase.js"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
