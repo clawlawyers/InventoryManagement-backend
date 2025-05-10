@@ -11,17 +11,28 @@ const SalesmanSchema = new Schema({
     type: String,
     required: true,
   },
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+  },
   user_type: {
     type: String,
     required: true,
     default: "salesman",
   },
   permissions: {
-    type: [String],
+    type: Schema.Types.ObjectId,
+    ref: "Permission",
     required: true,
   },
   password: {
     type: String,
+    required: true,
+  },
+  manager: {
+    type: Schema.Types.ObjectId,
+    ref: "Manager",
     required: true,
   },
 });

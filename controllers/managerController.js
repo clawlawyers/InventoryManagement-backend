@@ -19,6 +19,15 @@ const createManager = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+const createSalesman = async (req, res) => {
+  try {
+    const salesman = new Salesman(req.body);
+    await salesman.save();
+    res.status(201).json(salesman);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
 const getCompaniesByManager = async (req, res) => {
   try {
     const managerId = req.query.managerId;

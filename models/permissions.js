@@ -17,7 +17,7 @@ const PermissionSchema = new Schema({
   salesman: {
     type: Schema.Types.ObjectId,
     ref: "Salesman",
-    required: true,
+    required: false, // Changed to false to allow initial creation without a salesman reference
   },
 });
 
