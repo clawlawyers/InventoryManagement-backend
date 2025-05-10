@@ -21,7 +21,7 @@ const createManager = async (req, res) => {
 };
 const getCompaniesByManager = async (req, res) => {
   try {
-    const { managerId } = req.body;
+    const managerId = req.query.managerId;
     const manager = await Manager.findById(managerId).populate("companies");
 
     if (!manager) {
@@ -34,8 +34,25 @@ const getCompaniesByManager = async (req, res) => {
   }
 };
 
+// Make sure getManagerById is defined
+const getManagerById = async (req, res) => {
+  try {
+    const manager = await Manager.findById(req.params.id);
+
+    if (!manager) {
+      return res.status(404).json({ message: "Manager not found" });
+    }
+
+    res.json(manager);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Make sure it's included in the exports
 module.exports = {
   getAllManagers,
   getCompaniesByManager,
   createManager,
+  getManagerById,
 };

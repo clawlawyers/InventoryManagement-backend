@@ -71,19 +71,28 @@ const sampleSalesmen = [
 const generateInventoryItems = (companyIds) => {
   const items = [];
   const categories = ["CTN", "SLK", "PLY", "WOL", "LNN"]; // Cotton, Silk, Polyester, Wool, Linen
-  
+
   companyIds.forEach((companyId) => {
     // Generate 3-5 inventory items per company
     const itemCount = Math.floor(Math.random() * 3) + 3;
-    
+
     for (let i = 0; i < itemCount; i++) {
-      const categoryCode = categories[Math.floor(Math.random() * categories.length)];
-      const bailNumber = `B${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-      const lotNumber = `L${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-      
+      const categoryCode =
+        categories[Math.floor(Math.random() * categories.length)];
+      const bailNumber = `B${String(Math.floor(Math.random() * 10000)).padStart(
+        4,
+        "0"
+      )}`;
+      const lotNumber = `L${String(Math.floor(Math.random() * 1000)).padStart(
+        3,
+        "0"
+      )}`;
+
       items.push({
         bail_number: bailNumber,
-        bail_date: new Date(Date.now() - Math.floor(Math.random() * 10000000000)),
+        bail_date: new Date(
+          Date.now() - Math.floor(Math.random() * 10000000000)
+        ),
         category_code: categoryCode,
         lot_number: lotNumber,
         stock_amount: Math.floor(Math.random() * 1000) + 100,
@@ -91,7 +100,7 @@ const generateInventoryItems = (companyIds) => {
       });
     }
   });
-  
+
   return items;
 };
 
@@ -103,55 +112,57 @@ const seedDatabase = async () => {
     await Company.deleteMany({});
     await Inventory.deleteMany({});
     await Salesman.deleteMany({});
-    
+
     console.log("Cleared existing data");
-    
+
     // Insert managers
     const managers = await Manager.insertMany(sampleManagers);
     console.log(`Added ${managers.length} managers`);
-    
+
     // Insert companies and associate with managers
     const companies = [];
-    
+
     for (let i = 0; i < sampleCompanies.length; i++) {
       const company = new Company(sampleCompanies[i]);
       await company.save();
       companies.push(company);
-      
+
       // Assign company to a random manager
-      const randomManager = managers[Math.floor(Math.random() * managers.length)];
+      const randomManager =
+        managers[Math.floor(Math.random() * managers.length)];
       randomManager.companies.push(company._id);
       await randomManager.save();
     }
-    
+
     console.log(`Added ${companies.length} companies`);
-    
+
     // Insert salesmen and associate with managers
     const salesmen = await Salesman.insertMany(sampleSalesmen);
-    
+
     for (const salesman of salesmen) {
       // Assign salesman to a random manager
-      const randomManager = managers[Math.floor(Math.random() * managers.length)];
+      const randomManager =
+        managers[Math.floor(Math.random() * managers.length)];
       randomManager.salesmen.push(salesman._id);
       await randomManager.save();
     }
-    
+
     console.log(`Added ${salesmen.length} salesmen`);
-    
+
     // Generate and insert inventory items
-    const companyIds = companies.map(company => company._id);
+    const companyIds = companies.map((company) => company._id);
     const inventoryItems = generateInventoryItems(companyIds);
     const inventories = await Inventory.insertMany(inventoryItems);
-    
+
     // Associate inventory items with companies
     for (const inventory of inventories) {
       const company = await Company.findById(inventory.company);
       company.inventories.push(inventory._id);
       await company.save();
     }
-    
+
     console.log(`Added ${inventories.length} inventory items`);
-    
+
     console.log("Database seeded successfully!");
     process.exit(0);
   } catch (error) {

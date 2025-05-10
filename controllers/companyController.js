@@ -1,9 +1,10 @@
 const Company = require("../models/company");
+const Inventory = require("../models/inventory");
 
-// POST: Get inventories by company ID
-const getInventoriesByCompany = async (req, res) => {
+// GET: Get inventories by company ID
+const getInventoriesByCompanyId = async (req, res) => {
   try {
-    const { companyId } = req.body;
+    const companyId = req.params.id;
     const company = await Company.findById(companyId).populate("inventories");
 
     if (!company) {
@@ -16,6 +17,23 @@ const getInventoriesByCompany = async (req, res) => {
   }
 };
 
+// GET: Get company by ID
+const getCompanyById = async (req, res) => {
+  try {
+    const companyId = req.params.id;
+    const company = await Company.findById(companyId);
+
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    res.json(company);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
-  getInventoriesByCompany,
+  getInventoriesByCompanyId,
+  getCompanyById,
 };
