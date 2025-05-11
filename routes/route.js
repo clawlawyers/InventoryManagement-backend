@@ -5,10 +5,12 @@ const router = express.Router();
 const managerRoutes = require("./managerRoutes");
 const companyRoutes = require("./companyRoutes");
 const salesmanRoutes = require("./salesmanRoutes");
+const clientRoutes = require("./clientRoutes");
 
 // Mount routes
 router.use("/managers", managerRoutes);
 router.use("/companies", companyRoutes);
 router.use("/salesmen", salesmanRoutes);
+router.use("/clients", clientRoutes);
 
 module.exports = router;
