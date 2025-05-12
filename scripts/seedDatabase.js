@@ -6,6 +6,8 @@ const Manager = require("../models/manager");
 const Company = require("../models/company");
 const Inventory = require("../models/inventory");
 const Salesman = require("../models/Salesman");
+const Client = require("../models/Client");
+const Permission = require("../models/permissions");
 
 // Connect to MongoDB
 mongoose
@@ -48,24 +50,64 @@ const sampleSalesmen = [
     user_id: "SM001",
     name: "Robert Wilson",
     user_type: "salesman",
-    permissions: ["view_inventory", "create_order"],
+    phone: "555-123-4567",
     password: "password123",
   },
   {
     user_id: "SM002",
     name: "Lisa Chen",
     user_type: "salesman",
-    permissions: ["view_inventory", "create_order", "view_reports"],
+    phone: "555-234-5678",
     password: "password123",
   },
   {
     user_id: "SM003",
     name: "David Garcia",
     user_type: "salesman",
-    permissions: ["view_inventory"],
+    phone: "555-345-6789",
     password: "password123",
   },
 ];
+
+// Sample clients data
+const generateSampleClients = (salesmanIds) => {
+  const clients = [];
+  const cities = [
+    "New York",
+    "Los Angeles",
+    "Chicago",
+    "Houston",
+    "Phoenix",
+    "Philadelphia",
+    "San Antonio",
+    "San Diego",
+  ];
+  const states = ["NY", "CA", "IL", "TX", "AZ", "PA", "TX", "CA"];
+
+  // Generate 3-5 clients per salesman
+  salesmanIds.forEach((salesmanId, index) => {
+    const clientCount = Math.floor(Math.random() * 3) + 3; // 3-5 clients
+
+    for (let i = 0; i < clientCount; i++) {
+      const cityIndex = Math.floor(Math.random() * cities.length);
+      clients.push({
+        name: `Client ${index + 1}-${i + 1}`,
+        phone: `555-${String(Math.floor(100 + Math.random() * 900))}-${String(
+          Math.floor(1000 + Math.random() * 9000)
+        )}`,
+        email: `client${index + 1}${i + 1}@example.com`,
+        address: `${Math.floor(100 + Math.random() * 9900)} Main St`,
+        city: cities[cityIndex],
+        state: states[cityIndex],
+        zipCode: String(Math.floor(10000 + Math.random() * 90000)),
+        notes: `Notes for client ${index + 1}-${i + 1}`,
+        salesman: salesmanId,
+      });
+    }
+  });
+
+  return clients;
+};
 
 // Function to generate random inventory items
 const generateInventoryItems = (companyIds) => {
@@ -112,6 +154,8 @@ const seedDatabase = async () => {
     await Company.deleteMany({});
     await Inventory.deleteMany({});
     await Salesman.deleteMany({});
+    await Client.deleteMany({});
+    await Permission.deleteMany({});
 
     console.log("Cleared existing data");
 
@@ -136,18 +180,46 @@ const seedDatabase = async () => {
 
     console.log(`Added ${companies.length} companies`);
 
-    // Insert salesmen and associate with managers
-    const salesmen = await Salesman.insertMany(sampleSalesmen);
+    // Create salesmen with permissions and associate with managers
+    const salesmen = [];
 
-    for (const salesman of salesmen) {
-      // Assign salesman to a random manager
-      const randomManager =
-        managers[Math.floor(Math.random() * managers.length)];
-      randomManager.salesmen.push(salesman._id);
-      await randomManager.save();
+    for (const salesmanData of sampleSalesmen) {
+      // Create permission for salesman
+      const permission = new Permission({
+        add: Math.random() > 0.5,
+        delete: Math.random() > 0.7,
+        description: `Permissions for ${salesmanData.name}`,
+      });
+      await permission.save();
+
+      // Create salesman
+      const salesman = new Salesman({
+        ...salesmanData,
+        permissions: permission._id,
+        manager: managers[Math.floor(Math.random() * managers.length)]._id,
+      });
+
+      await salesman.save();
+      salesmen.push(salesman);
+
+      // Update permission with salesman reference
+      permission.salesman = salesman._id;
+      await permission.save();
+
+      // Assign salesman to manager
+      const manager = await Manager.findById(salesman.manager);
+      manager.salesmen.push(salesman._id);
+      await manager.save();
     }
 
-    console.log(`Added ${salesmen.length} salesmen`);
+    console.log(`Added ${salesmen.length} salesmen with permissions`);
+
+    // Generate and insert clients
+    const salesmanIds = salesmen.map((salesman) => salesman._id);
+    const clientsData = generateSampleClients(salesmanIds);
+    const clients = await Client.insertMany(clientsData);
+
+    console.log(`Added ${clients.length} clients`);
 
     // Generate and insert inventory items
     const companyIds = companies.map((company) => company._id);

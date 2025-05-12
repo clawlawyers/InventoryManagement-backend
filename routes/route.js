@@ -6,8 +6,10 @@ const managerRoutes = require("./managerRoutes");
 const companyRoutes = require("./companyRoutes");
 const salesmanRoutes = require("./salesmanRoutes");
 const clientRoutes = require("./clientRoutes");
+const authRoutes = require("./authRoutes");
 
 // Mount routes
+router.use("/auth", authRoutes);
 router.use("/managers", managerRoutes);
 router.use("/companies", companyRoutes);
 router.use("/salesmen", salesmanRoutes);
