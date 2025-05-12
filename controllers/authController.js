@@ -1,6 +1,7 @@
 const Manager = require("../models/manager");
 const Salesman = require("../models/Salesman");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 // Manager login
 const managerLogin = async (req, res) => {
@@ -15,7 +16,7 @@ const managerLogin = async (req, res) => {
 
     const manager = await Manager.findOne({ email });
 
-    if (!manager || manager.password !== password) {
+    if (!manager || !(await bcrypt.compare(password, manager.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -83,11 +84,11 @@ const managerSignup = async (req, res) => {
       return res.status(400).json({ message: "Email is already registered" });
     }
 
-    // Create new manager
+    const hashedPassword = await bcrypt.hash(password, 10);
     const manager = new Manager({
       name,
       email,
-      password,
+      password: hashedPassword,
       companies: [],
       salesmen: [],
     });
