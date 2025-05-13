@@ -1,5 +1,5 @@
-const Company = require("../models/company");
-const Inventory = require("../models/inventory");
+const Company = require("../models/Company");
+const Inventory = require("../models/Inventory");
 
 // GET: Get inventories by company ID
 const getInventoriesByCompanyId = async (req, res) => {

@@ -4,50 +4,50 @@ const Schema = mongoose.Schema;
 const ExcelUploadSchema = new Schema({
   filename: {
     type: String,
-    required: true
+    required: true,
   },
   originalname: {
     type: String,
-    required: true
+    required: true,
   },
   path: {
     type: String,
-    required: true
+    required: true,
   },
   size: {
     type: Number,
-    required: true
+    required: true,
   },
   uploadDate: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   salesman: {
     type: Schema.Types.ObjectId,
     ref: "Salesman",
-    required: true
+    required: false, // Changed to false to allow uploads without a salesman reference
   },
   processed: {
     type: Boolean,
-    default: false
+    default: false,
   },
   processingResults: {
     success: {
       type: Number,
-      default: 0
+      default: 0,
     },
     errors: {
       type: Number,
-      default: 0
+      default: 0,
     },
     details: [
       {
         row: Number,
         message: String,
-        success: Boolean
-      }
-    ]
-  }
+        success: Boolean,
+      },
+    ],
+  },
 });
 
 module.exports = mongoose.model("ExcelUpload", ExcelUploadSchema);

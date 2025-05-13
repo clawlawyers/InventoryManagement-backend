@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 
 // Import models
-const Manager = require("../models/manager");
-const Company = require("../models/company");
-const Inventory = require("../models/inventory");
+const Manager = require("../models/Manager");
+const Company = require("../models/Company");
+const Inventory = require("../models/Inventory");
 const Salesman = require("../models/Salesman");
 const Client = require("../models/Client");
-const Permission = require("../models/permissions");
+const Permission = require("../models/Permission");
 
 // Connect to MongoDB
 mongoose

@@ -1,4 +1,4 @@
-const Manager = require("../models/manager");
+const Manager = require("../models/Manager");
 const Salesman = require("../models/Salesman");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");

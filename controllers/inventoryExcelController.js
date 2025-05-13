@@ -6,7 +6,8 @@ const Company = require("../models/Company");
 // Upload and process inventory Excel file
 const uploadInventoryExcel = async (req, res) => {
   try {
-    const { companyId } = req.params;
+    console.log("Request params:", req.params);
+    const companyId = req.params.companyId;
 
     // Check if company exists
     const company = await Company.findById(companyId);
@@ -19,18 +20,41 @@ const uploadInventoryExcel = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
+    // Get salesmanId from form data if available
+    const salesmanId = req.body.salesmanId || null;
+
+    console.log("Request body:", req.body);
+    console.log("SalesmanId from form data:", salesmanId);
+
     // Create a record of the upload
     const excelUpload = new ExcelUpload({
       filename: req.file.filename,
       originalname: req.file.originalname,
       path: req.file.path,
       size: req.file.size,
-      // Use a hardcoded salesman ID for testing
-      salesman: "682066d2bea63f59170b4084", // Replace with a valid salesman ID from your database
+      // Use salesmanId from form data if available, otherwise try to get from req.user
+      salesman: salesmanId || (req.user ? req.user._id : null),
       processed: false,
     });
 
-    await excelUpload.save();
+    console.log("Creating Excel upload record:", {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      salesmanId: salesmanId || "Not provided",
+      user: req.user || "No user information available",
+    });
+
+    try {
+      await excelUpload.save();
+      console.log("Excel upload record saved successfully");
+    } catch (saveError) {
+      console.error("Error saving Excel upload record:", saveError);
+      return res.status(500).json({
+        message: "Error saving upload record",
+        error: saveError.message,
+      });
+    }
 
     // Process the Excel file
     const workbook = xlsx.readFile(req.file.path);
@@ -124,7 +148,12 @@ const uploadInventoryExcel = async (req, res) => {
       results: processingResults,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error processing Excel file:", err);
+    res.status(500).json({
+      message: "Error processing Excel file",
+      error: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
   }
 };
 
