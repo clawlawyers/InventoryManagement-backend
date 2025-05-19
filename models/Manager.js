@@ -11,7 +11,15 @@ const ManagerSchema = new Schema({
     required: true,
     unique: true,
   },
+  phoneNumber: {
+    type: String,
+    required: true,
+  },
   password: {
+    type: String,
+    required: true,
+  },
+  GSTNumber: {
     type: String,
     required: true,
   },

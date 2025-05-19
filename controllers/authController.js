@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 // Manager login
 const managerLogin = async (req, res) => {
   try {
+    console.log("request is coming");
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -14,7 +15,7 @@ const managerLogin = async (req, res) => {
         .json({ message: "Email and password are required" });
     }
 
-    const manager = await Manager.findOne({ email });
+    const manager = await Manager.findOne({ email }).populate("companies");
 
     if (!manager || !(await bcrypt.compare(password, manager.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -28,7 +29,13 @@ const managerLogin = async (req, res) => {
 
     res.json({
       token,
-      user: { id: manager._id, name: manager.name, type: "manager" },
+      user: {
+        id: manager._id,
+        name: manager.name,
+        type: "manager",
+        email: manager.email,
+        companies: manager.companies,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -70,12 +77,13 @@ const salesmanLogin = async (req, res) => {
 // Manager signup
 const managerSignup = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phoneNumber, GSTNumber } = req.body;
 
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email, and password are required" });
+    if (!name || !email || !password || !phoneNumber || !GSTNumber) {
+      return res.status(400).json({
+        message:
+          "Name, email, phoneNumber ,GSTNumber and password are required",
+      });
     }
 
     // Check if email is already in use
@@ -89,6 +97,8 @@ const managerSignup = async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      phoneNumber,
+      GSTNumber,
       companies: [],
       salesmen: [],
     });
@@ -99,7 +109,7 @@ const managerSignup = async (req, res) => {
     const token = jwt.sign(
       { id: manager._id, type: "manager" },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "365d" }
     );
 
     res.status(201).json({
@@ -110,6 +120,7 @@ const managerSignup = async (req, res) => {
         name: manager.name,
         email: manager.email,
         type: "manager",
+        companies: [],
       },
     });
   } catch (err) {
@@ -117,8 +128,45 @@ const managerSignup = async (req, res) => {
   }
 };
 
+const getVerify = async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type === "manager") {
+      const manager = await Manager.findById(decoded.id).populate("companies");
+      if (!manager) {
+        return res.status(401).json({ message: "Token is invalid" });
+      }
+      res.json({
+        token,
+        user: {
+          id: manager._id,
+          name: manager.name,
+          type: "manager",
+          email: manager.email,
+          companies: manager.companies,
+        },
+      });
+    } else if (decoded.type === "salesman") {
+      const salesman = await Salesman.findById(decoded.id);
+      if (!salesman) {
+        return res.status(401).json({ message: "Token is invalid" });
+      }
+      res.json({
+        token,
+        user: { id: salesman._id, name: salesman.name, type: "salesman" },
+      });
+    } else {
+      res.status(401).json({ message: "Token is invalid" });
+    }
+  } catch (error) {
+    res.status(401).json({ message: "Token is invalid" });
+  }
+};
+
 module.exports = {
   managerLogin,
   salesmanLogin,
   managerSignup,
+  getVerify,
 };
