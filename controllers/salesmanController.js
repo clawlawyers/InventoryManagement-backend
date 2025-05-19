@@ -1,6 +1,6 @@
 const Salesman = require("../models/Salesman");
 const Permission = require("../models/permissions");
-const Manager = require("../models/manager");
+const Manager = require("../models/Manager");
 const crypto = require("crypto");
 
 // Generate a random user ID with prefix SM followed by 4 digits
