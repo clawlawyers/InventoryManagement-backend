@@ -1,5 +1,4 @@
 const xlsx = require("xlsx");
-const ExcelUpload = require("../models/ExcelUpload");
 const Inventory = require("../models/Inventory");
 const Company = require("../models/Company");
 
@@ -26,38 +25,8 @@ const uploadInventoryExcel = async (req, res) => {
     console.log("Request body:", req.body);
     console.log("SalesmanId from form data:", salesmanId);
 
-    // Create a record of the upload
-    const excelUpload = new ExcelUpload({
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      path: req.file.path,
-      size: req.file.size,
-      // Use salesmanId from form data if available, otherwise try to get from req.user
-      salesman: salesmanId || (req.user ? req.user._id : null),
-      processed: false,
-    });
-
-    console.log("Creating Excel upload record:", {
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      size: req.file.size,
-      salesmanId: salesmanId || "Not provided",
-      user: req.user || "No user information available",
-    });
-
-    try {
-      await excelUpload.save();
-      console.log("Excel upload record saved successfully");
-    } catch (saveError) {
-      console.error("Error saving Excel upload record:", saveError);
-      return res.status(500).json({
-        message: "Error saving upload record",
-        error: saveError.message,
-      });
-    }
-
-    // Process the Excel file
-    const workbook = xlsx.readFile(req.file.path);
+    // Process the Excel file directly from buffer
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet);
@@ -121,11 +90,6 @@ const uploadInventoryExcel = async (req, res) => {
       }
     }
 
-    // Update the upload record with processing results
-    excelUpload.processed = true;
-    excelUpload.processingResults = processingResults;
-    await excelUpload.save();
-
     // Expected headers
     const expectedHeaders = [
       "Entry Date",
@@ -140,7 +104,6 @@ const uploadInventoryExcel = async (req, res) => {
     res.status(200).json({
       message: "Inventory Excel file processed",
       file: {
-        filename: req.file.filename,
         originalname: req.file.originalname,
       },
       expectedHeaders: expectedHeaders,

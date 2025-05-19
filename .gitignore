@@ -8,6 +8,8 @@ package-lock.json
 yarn.lock
 .pnpm-debug.log
 frontend/
+scripts/
+ignore/
 
 # dotenv environment variables
 .env
