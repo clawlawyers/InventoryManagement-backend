@@ -22,6 +22,10 @@ app.use((err, req, res, next) => {
     return res.status(415).json({ message: err.message });
   }
 
+  if (err.message === "Only image files are allowed!") {
+    return res.status(415).json({ message: err.message });
+  }
+
   console.error(err);
   return res.status(500).json({ message: "Internal server error" });
 });

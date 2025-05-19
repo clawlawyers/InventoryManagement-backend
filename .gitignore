@@ -10,6 +10,7 @@ yarn.lock
 frontend/
 scripts/
 ignore/
+uploads/
 
 # dotenv environment variables
 .env
