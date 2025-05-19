@@ -1,4 +1,4 @@
-const Manager = require("../models/manager");
+const Manager = require("../models/Manager");
 
 // GET all managers
 const getAllManagers = async (req, res) => {
