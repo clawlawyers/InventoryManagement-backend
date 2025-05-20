@@ -131,12 +131,22 @@ const managerSignup = async (req, res) => {
 const getVerify = async (req, res) => {
   try {
     const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.type === "manager") {
       const manager = await Manager.findById(decoded.id).populate("companies");
       if (!manager) {
         return res.status(401).json({ message: "Token is invalid" });
       }
+      console.log({
+        token,
+        user: {
+          id: manager._id,
+          name: manager.name,
+          type: "manager",
+          email: manager.email,
+          companies: manager.companies,
+        },
+      });
       res.json({
         token,
         user: {

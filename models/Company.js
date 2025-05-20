@@ -6,12 +6,18 @@ const CompanySchema = new Schema({
     type: String,
     required: true,
   },
-  inventories: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Inventory",
-    },
-  ],
+  address: {
+    type: String,
+    required: true,
+  },
+  GSTNumber: {
+    type: String,
+    required: true,
+  },
+  inventory: {
+    type: Schema.Types.ObjectId,
+    ref: "Inventory",
+  },
 });
 
 module.exports = mongoose.model("Company", CompanySchema);
