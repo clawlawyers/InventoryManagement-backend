@@ -1,0 +1,557 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+    "name": "TextileBot API Collection",
+    "description": "API collection for the TextileBot application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Manager Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"manager@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/manager/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "manager", "login"]
+            },
+            "description": "Login as a manager"
+          },
+          "response": []
+        },
+        {
+          "name": "Manager Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"New Manager\",\n    \"email\": \"newmanager@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/manager/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "manager", "signup"]
+            },
+            "description": "Register a new manager"
+          },
+          "response": []
+        },
+        {
+          "name": "Salesman Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"S12345\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/salesman/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "salesman", "login"]
+            },
+            "description": "Login as a salesman"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for managers and salesmen"
+    },
+    {
+      "name": "Managers",
+      "item": [
+        {
+          "name": "Get All Managers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/managers",
+              "host": ["{{baseUrl}}"],
+              "path": ["managers"]
+            },
+            "description": "Get a list of all managers"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Manager by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/managers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["managers", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{managerId}}",
+                  "description": "The ID of the manager"
+                }
+              ]
+            },
+            "description": "Get details of a specific manager by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"New Manager\",\n    \"email\": \"newmanager@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/managers",
+              "host": ["{{baseUrl}}"],
+              "path": ["managers"]
+            },
+            "description": "Create a new manager"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Companies by Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/managers/companies",
+              "host": ["{{baseUrl}}"],
+              "path": ["managers", "companies"]
+            },
+            "description": "Get all companies associated with a manager"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing managers"
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{companyId}}",
+                  "description": "The ID of the company"
+                }
+              ]
+            },
+            "description": "Get details of a specific company by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inventories by Company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/:id/inventories",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ":id", "inventories"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{companyId}}",
+                  "description": "The ID of the company"
+                }
+              ]
+            },
+            "description": "Get all inventory items for a specific company"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Inventory Excel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "excelFile",
+                  "type": "file",
+                  "src": "/path/to/your/inventory.xlsx",
+                  "description": "Excel file containing inventory data"
+                },
+                {
+                  "key": "salesmanId",
+                  "value": "{{salesmanId}}",
+                  "description": "ID of the salesman uploading the file (optional)",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/companies/:companyId/upload-inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ":companyId", "upload-inventory"],
+              "variable": [
+                {
+                  "key": "companyId",
+                  "value": "{{companyId}}",
+                  "description": "The ID of the company"
+                }
+              ]
+            },
+            "description": "Upload an Excel file with inventory data for a company"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing companies and their inventories"
+    },
+    {
+      "name": "Salesmen",
+      "item": [
+        {
+          "name": "Get All Salesmen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/salesmen",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen"]
+            },
+            "description": "Get a list of all salesmen"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Salesmen by Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/salesmen/manager/:managerId",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen", "manager", ":managerId"],
+              "variable": [
+                {
+                  "key": "managerId",
+                  "value": "{{managerId}}",
+                  "description": "The ID of the manager"
+                }
+              ]
+            },
+            "description": "Get all salesmen associated with a specific manager"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Salesman",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"S12345\",\n    \"name\": \"New Salesman\",\n    \"phone\": \"1234567890\",\n    \"password\": \"password123\",\n    \"manager\": \"{{managerId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/salesmen",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen"]
+            },
+            "description": "Create a new salesman"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Clients by Salesman",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/salesmen/:salesmanId/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen", ":salesmanId", "clients"],
+              "variable": [
+                {
+                  "key": "salesmanId",
+                  "value": "{{salesmanId}}",
+                  "description": "The ID of the salesman"
+                }
+              ]
+            },
+            "description": "Get all clients associated with a specific salesman"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Client for Salesman",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"New Client\",\n    \"phone\": \"9876543210\",\n    \"email\": \"client@example.com\",\n    \"address\": \"123 Main St\",\n    \"city\": \"Anytown\",\n    \"state\": \"State\",\n    \"zipCode\": \"12345\",\n    \"notes\": \"Important client\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/salesmen/:salesmanId/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen", ":salesmanId", "clients"],
+              "variable": [
+                {
+                  "key": "salesmanId",
+                  "value": "{{salesmanId}}",
+                  "description": "The ID of the salesman"
+                }
+              ]
+            },
+            "description": "Create a new client for a specific salesman"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Excel File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "excelFile",
+                  "type": "file",
+                  "src": "/path/to/your/file.xlsx",
+                  "description": "Excel file to upload"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/salesmen/:salesmanId/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen", ":salesmanId", "upload"],
+              "variable": [
+                {
+                  "key": "salesmanId",
+                  "value": "{{salesmanId}}",
+                  "description": "The ID of the salesman"
+                }
+              ]
+            },
+            "description": "Upload an Excel file for a specific salesman"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Excel Uploads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/salesmen/:salesmanId/uploads",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesmen", ":salesmanId", "uploads"],
+              "variable": [
+                {
+                  "key": "salesmanId",
+                  "value": "{{salesmanId}}",
+                  "description": "The ID of the salesman"
+                }
+              ]
+            },
+            "description": "Get all Excel uploads for a specific salesman"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing salesmen, their clients, and Excel uploads"
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Get All Clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["clients"]
+            },
+            "description": "Get a list of all clients"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Client by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["clients", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{clientId}}",
+                  "description": "The ID of the client"
+                }
+              ]
+            },
+            "description": "Get details of a specific client by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Client",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Client Name\",\n    \"phone\": \"9876543210\",\n    \"email\": \"updated@example.com\",\n    \"address\": \"456 New St\",\n    \"city\": \"New City\",\n    \"state\": \"New State\",\n    \"zipCode\": \"54321\",\n    \"notes\": \"Updated notes\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/clients/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["clients", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{clientId}}",
+                  "description": "The ID of the client"
+                }
+              ]
+            },
+            "description": "Update details of a specific client"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Client",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["clients", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{clientId}}",
+                  "description": "The ID of the client"
+                }
+              ]
+            },
+            "description": "Delete a specific client"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing clients"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string",
+      "description": "Base URL for the API"
+    },
+    {
+      "key": "managerId",
+      "value": "your-manager-id",
+      "type": "string",
+      "description": "ID of a manager"
+    },
+    {
+      "key": "salesmanId",
+      "value": "your-salesman-id",
+      "type": "string",
+      "description": "ID of a salesman"
+    },
+    {
+      "key": "companyId",
+      "value": "your-company-id",
+      "type": "string",
+      "description": "ID of a company"
+    },
+    {
+      "key": "clientId",
+      "value": "your-client-id",
+      "type": "string",
+      "description": "ID of a client"
+    }
+  ]
+}

@@ -1,23 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../middleware/upload");
 const {
   getInventoriesByCompanyId,
   getCompanyById,
+  createCompany,
 } = require("../controllers/companyController");
-const {
-  uploadInventoryExcel,
-} = require("../controllers/inventoryExcelController");
+const { requireAuth } = require("../middleware/requireAuth");
 
 // Company routes
-router.get("/:id", getCompanyById);
-router.get("/:id/inventories", getInventoriesByCompanyId);
 
-// Excel upload route
-router.post(
-  "/:companyId/upload-inventory",
-  upload.single("excelFile"),
-  uploadInventoryExcel
-);
+router.post("/create", requireAuth, createCompany);
+router.get("/:id/inventories", getInventoriesByCompanyId);
+router.get("/:id", getCompanyById);
 
 module.exports = router;
