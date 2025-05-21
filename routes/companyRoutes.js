@@ -63,6 +63,11 @@ router.post(
 );
 
 // New route for mapping Excel columns to inventory fields
-router.post("/:companyId/map-inventory", logParams, mapInventoryExcel);
+router.post(
+  "/:companyId/map-inventory",
+  logParams,
+  upload.single("excelFile"),
+  mapInventoryExcel
+);
 
 module.exports = router;

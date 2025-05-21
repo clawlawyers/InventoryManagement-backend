@@ -95,23 +95,38 @@ const mapInventoryExcel = async (req, res) => {
     console.log("EXCEL MAPPING ENDPOINT CALLED");
     console.log("Request body:", req.body);
 
-    const { excelData, columnMappings, inventoryName } = req.body;
+    const { columnMappings, inventoryName } = req.body;
     const companyId = req.params.companyId;
 
     // Validate required parameters
-    if (!excelData || !columnMappings) {
+    if (!req.file || !columnMappings) {
       return res.status(400).json({
         message:
-          "Missing required parameters: excelData and columnMappings are required",
+          "Missing required parameters: Excel file and columnMappings are required",
       });
     }
 
-    // Parse the Excel data if it's a string
-    const data =
-      typeof excelData === "string" ? JSON.parse(excelData) : excelData;
+    // Process the Excel file directly from buffer
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
 
-    // Extract headers from the first row of data
-    const headers = data.length > 0 ? Object.keys(data[0]) : [];
+    // Get all headers by setting header:1 option
+    const rawData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Extract headers from the first row
+    const headers = rawData.length > 0 ? rawData[0] : [];
+
+    // Convert the rest of the data to objects using the headers
+    const data = [];
+    for (let i = 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      const obj = {};
+      for (let j = 0; j < headers.length; j++) {
+        obj[headers[j]] = row[j];
+      }
+      data.push(obj);
+    }
 
     // Check if company exists
     const company = await Company.findById(companyId);
