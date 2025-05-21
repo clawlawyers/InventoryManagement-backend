@@ -4,11 +4,6 @@ const Company = require("../models/Company");
 const InventoryProduct = require("../models/InventoryProduct");
 const ExcelUpload = require("../models/ExcelUpload");
 
-// Temporary storage for Excel data between requests
-// In a production environment, this should be replaced with a more robust solution
-// like Redis or a database table
-const excelDataStorage = new Map();
-
 // Upload Excel file and extract headers only
 const uploadInventoryExcel = async (req, res) => {
   try {
@@ -49,10 +44,23 @@ const uploadInventoryExcel = async (req, res) => {
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet);
 
-    // Get column headers from the first row
-    const headers = data.length > 0 ? Object.keys(data[0]) : [];
+    // Get all headers by setting header:1 option
+    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Extract headers from the first row
+    const headers = data.length > 0 ? data[0] : [];
+
+    // Convert the rest of the data to objects using the headers
+    const jsonData = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const obj = {};
+      for (let j = 0; j < headers.length; j++) {
+        obj[headers[j]] = row[j];
+      }
+      jsonData.push(obj);
+    }
 
     if (headers.length === 0) {
       return res.status(400).json({
@@ -60,24 +68,11 @@ const uploadInventoryExcel = async (req, res) => {
       });
     }
 
-    // Generate a unique ID for this upload
-    const uploadId = Date.now().toString();
-
-    // Store the Excel data for later processing
-    excelDataStorage.set(uploadId, {
-      data,
-      headers,
-      companyId,
-      originalname: req.file.originalname,
-      size: req.file.size,
-      timestamp: Date.now(),
-    });
-
-    // Return only the headers and upload ID
+    // Return only headers and company ID
     return res.status(200).json({
       message: "Excel file headers retrieved successfully",
-      uploadId: uploadId,
       headers: headers,
+      companyId: companyId,
       file: {
         originalname: req.file.originalname,
         size: req.file.size,
