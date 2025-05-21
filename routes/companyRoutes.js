@@ -7,6 +7,7 @@ const {
 } = require("../controllers/companyController");
 const {
   uploadInventoryExcel,
+  mapInventoryExcel,
 } = require("../controllers/inventoryExcelController");
 const { requireAuth } = require("../middleware/requireAuth");
 const upload = require("../middleware/upload");
@@ -60,5 +61,8 @@ router.post(
   upload.single("excelFile"),
   uploadInventoryExcel
 );
+
+// New route for mapping Excel columns to inventory fields
+router.post("/:companyId/map-inventory", logParams, mapInventoryExcel);
 
 module.exports = router;

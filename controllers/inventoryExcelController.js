@@ -4,20 +4,22 @@ const Company = require("../models/Company");
 const InventoryProduct = require("../models/InventoryProduct");
 const ExcelUpload = require("../models/ExcelUpload");
 
-// Upload and process inventory Excel file
+// Temporary storage for Excel data between requests
+// In a production environment, this should be replaced with a more robust solution
+// like Redis or a database table
+const excelDataStorage = new Map();
+
+// Upload Excel file and extract headers only
 const uploadInventoryExcel = async (req, res) => {
   try {
-    // Direct console.log for debugging
     console.log("=============================================");
     console.log("EXCEL UPLOAD ENDPOINT CALLED");
     console.log("Request params:", req.params);
     console.log("Request method:", req.method);
     console.log("Request URL:", req.originalUrl);
-    console.log("Request headers:", req.headers);
 
     const companyId = req.params.companyId;
     console.log("Looking for company with ID:", companyId);
-    console.log("Company ID type:", typeof companyId);
 
     // Check if company exists
     const company = await Company.findById(companyId);
@@ -52,103 +54,112 @@ const uploadInventoryExcel = async (req, res) => {
     // Get column headers from the first row
     const headers = data.length > 0 ? Object.keys(data[0]) : [];
 
-    // Check if this is just a headers request (first step of the process)
-    const isHeadersRequest = req.body.headersOnly === "true";
-
-    if (isHeadersRequest) {
-      return res.status(200).json({
-        message: "Excel file headers retrieved successfully",
-        headers: headers,
+    if (headers.length === 0) {
+      return res.status(400).json({
+        message: "Excel file has no headers or is empty",
       });
     }
 
-    // Get column mappings from request body
-    const columnMappings = JSON.parse(req.body.columnMappings || "{}");
+    // Generate a unique ID for this upload
+    const uploadId = Date.now().toString();
 
-    console.log("Column mappings:", columnMappings);
+    // Store the Excel data for later processing
+    excelDataStorage.set(uploadId, {
+      data,
+      headers,
+      companyId,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      timestamp: Date.now(),
+    });
 
-    // Define required and optional fields
-    const requiredFields = [
-      "baleNumberField", // At minimum, we need a bale number or identifier
-    ];
+    // Return only the headers and upload ID
+    return res.status(200).json({
+      message: "Excel file headers retrieved successfully",
+      uploadId: uploadId,
+      headers: headers,
+      file: {
+        originalname: req.file.originalname,
+        size: req.file.size,
+      },
+    });
+  } catch (err) {
+    console.error("Error processing Excel file:", err);
+    res.status(500).json({
+      message: "Error processing Excel file",
+      error: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+  }
+};
 
-    // These fields are preferred but can be handled with defaults if missing
-    const optionalFields = [
-      "dateField",
-      "categoryField",
-      "lotNumberField",
-      "stockAmountField",
-    ];
+// Map Excel columns to inventory fields and create inventory
+const mapInventoryExcel = async (req, res) => {
+  try {
+    console.log("=============================================");
+    console.log("EXCEL MAPPING ENDPOINT CALLED");
+    console.log("Request body:", req.body);
 
-    // Try to automatically map columns based on common names if no mappings provided
-    if (Object.keys(columnMappings).length === 0) {
-      console.log("No column mappings provided, trying to auto-map columns");
+    const { excelData, columnMappings, inventoryName } = req.body;
+    const companyId = req.params.companyId;
 
-      // Directly map to the specific column names from the Excel file
-      if (headers.includes("Full Bale No.")) {
-        columnMappings.baleNumberField = "Full Bale No.";
-        console.log(`Auto-mapped baleNumberField to Full Bale No.`);
-      }
-
-      if (headers.includes("Entry Date")) {
-        columnMappings.dateField = "Entry Date";
-        console.log(`Auto-mapped dateField to Entry Date`);
-      }
-
-      if (headers.includes("Item Name")) {
-        columnMappings.categoryField = "Item Name";
-        console.log(`Auto-mapped categoryField to Item Name`);
-      }
-
-      if (headers.includes("Lot No")) {
-        columnMappings.lotNumberField = "Lot No";
-        console.log(`Auto-mapped lotNumberField to Lot No`);
-      } else if (headers.includes("Design No")) {
-        columnMappings.lotNumberField = "Design No";
-        console.log(`Auto-mapped lotNumberField to Design No`);
-      }
-
-      if (headers.includes("Stock Act Mt")) {
-        columnMappings.stockAmountField = "Stock Act Mt";
-        console.log(`Auto-mapped stockAmountField to Stock Act Mt`);
-      }
+    // Validate required parameters
+    if (!excelData || !columnMappings) {
+      return res.status(400).json({
+        message:
+          "Missing required parameters: excelData and columnMappings are required",
+      });
     }
+
+    // Parse the Excel data if it's a string
+    const data =
+      typeof excelData === "string" ? JSON.parse(excelData) : excelData;
+
+    // Extract headers from the first row of data
+    const headers = data.length > 0 ? Object.keys(data[0]) : [];
+
+    // Check if company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return res.status(404).json({
+        message: "Company not found",
+      });
+    }
+
+    // Parse column mappings if it's a string
+    const mappings =
+      typeof columnMappings === "string"
+        ? JSON.parse(columnMappings)
+        : columnMappings;
+
+    console.log("Column mappings:", mappings);
+
+    // Define required fields
+    const requiredFields = [
+      "baleNumberField", // bail_number
+      "designCodeField", // design_code
+      "stockAmountField", // stock_amount
+    ];
 
     // Check for required fields
     const missingRequiredFields = requiredFields.filter(
-      (field) => !columnMappings[field]
+      (field) => !mappings[field]
     );
 
     if (missingRequiredFields.length > 0) {
-      // If "Full Bale No." is in the headers but not mapped, auto-map it
-      if (
-        missingRequiredFields.includes("baleNumberField") &&
-        headers.includes("Full Bale No.")
-      ) {
-        columnMappings.baleNumberField = "Full Bale No.";
-        console.log(
-          `Auto-mapped missing required field baleNumberField to Full Bale No.`
-        );
-      } else {
-        return res.status(400).json({
-          message: "Missing required column mappings",
-          missingFields: missingRequiredFields,
-          availableHeaders: headers,
-          suggestedMappings: {
-            baleNumberField: "Full Bale No.",
-            dateField: "Entry Date",
-            categoryField: "Item Name",
-            lotNumberField: "Lot No",
-            stockAmountField: "Stock Act Mt",
-          },
-          note: "Only baleNumberField is required. Other fields can be null if not provided.",
-        });
-      }
+      return res.status(400).json({
+        message: "Missing required column mappings",
+        missingFields: missingRequiredFields,
+        availableHeaders: headers,
+      });
     }
+
+    // These fields are optional and can be handled with defaults if missing
+    const optionalFields = ["dateField", "categoryField", "lotNumberField"];
 
     // Log which optional fields are missing
     const missingOptionalFields = optionalFields.filter(
-      (field) => !columnMappings[field]
+      (field) => !mappings[field]
     );
 
     if (missingOptionalFields.length > 0) {
@@ -165,13 +176,12 @@ const uploadInventoryExcel = async (req, res) => {
     };
 
     // Get inventory name from request body or use default
-    const inventoryName =
-      req.body.inventoryName ||
-      `Inventory-${new Date().toISOString().split("T")[0]}`;
+    const finalInventoryName =
+      inventoryName || `Inventory-${new Date().toISOString().split("T")[0]}`;
 
     // Create a new inventory document
     const inventoryDoc = new Inventory({
-      inventoryName: inventoryName,
+      inventoryName: finalInventoryName,
       company: companyId,
       products: [],
     });
@@ -188,11 +198,12 @@ const uploadInventoryExcel = async (req, res) => {
 
       try {
         // Get values using the user-defined column mappings
-        const baleNumberField = columnMappings.baleNumberField;
-        const dateField = columnMappings.dateField || null;
-        const categoryField = columnMappings.categoryField || null;
-        const lotNumberField = columnMappings.lotNumberField || null;
-        const stockAmountField = columnMappings.stockAmountField || null;
+        const baleNumberField = mappings.baleNumberField;
+        const dateField = mappings.dateField || null;
+        const categoryField = mappings.categoryField || null;
+        const designCodeField = mappings.designCodeField || null;
+        const lotNumberField = mappings.lotNumberField || null;
+        const stockAmountField = mappings.stockAmountField || null;
 
         // Get values from the row, with fallbacks for missing values
         const bailNumber = row[baleNumberField] || "";
@@ -204,14 +215,13 @@ const uploadInventoryExcel = async (req, res) => {
         const categoryCode =
           categoryField && row[categoryField] ? row[categoryField] : "";
 
-        // For lot_number, try both Lot No and Design No if available
+        const designCode =
+          designCodeField && row[designCodeField] ? row[designCodeField] : "";
+
+        // For lot_number, use the mapped field or try to find a suitable alternative
         let lotNumber = "";
         if (lotNumberField && row[lotNumberField]) {
           lotNumber = row[lotNumberField];
-        } else if (headers.includes("Design No") && row["Design No"]) {
-          lotNumber = row["Design No"];
-        } else if (headers.includes("Lot No") && row["Lot No"]) {
-          lotNumber = row["Lot No"];
         }
 
         const stockAmount =
@@ -219,15 +229,20 @@ const uploadInventoryExcel = async (req, res) => {
             ? parseFloat(row[stockAmountField])
             : 0;
 
-        // Check if we have the minimum required data (bale number)
+        // Check if we have the minimum required data
         if (!bailNumber) {
           throw new Error(`Missing bale number in row ${i + 1}`);
         }
 
-        // Create new inventory product with fallback values for missing data
+        if (!designCode) {
+          throw new Error(`Missing design code in row ${i + 1}`);
+        }
+
+        // Create new inventory product
         const inventoryProduct = new InventoryProduct({
           bail_number: bailNumber,
           bail_date: bailDate,
+          design_code: designCode,
           category_code: categoryCode,
           lot_number: lotNumber,
           stock_amount: stockAmount,
@@ -259,10 +274,10 @@ const uploadInventoryExcel = async (req, res) => {
 
     // Create an ExcelUpload record to track this upload
     const excelUpload = new ExcelUpload({
-      filename: req.file.originalname,
-      originalname: req.file.originalname,
-      path: req.file.path || "memory-storage", // Since we're using memory storage
-      size: req.file.size,
+      filename: "Excel Upload",
+      originalname: "Excel Upload",
+      path: "local-storage", // Since we're using local storage
+      size: 0,
       processed: true,
       processingResults: {
         success: processingResults.success,
@@ -275,23 +290,20 @@ const uploadInventoryExcel = async (req, res) => {
 
     res.status(200).json({
       message: "Inventory Excel file processed successfully",
-      file: {
-        originalname: req.file.originalname,
-      },
       inventory: {
         id: inventoryDoc._id,
         name: inventoryDoc.inventoryName,
         productCount: processingResults.success,
       },
-      columnMappings: columnMappings,
+      columnMappings: mappings,
       missingOptionalFields: missingOptionalFields || [],
       results: processingResults,
       uploadId: excelUpload._id,
     });
   } catch (err) {
-    console.error("Error processing Excel file:", err);
+    console.error("Error mapping Excel file:", err);
     res.status(500).json({
-      message: "Error processing Excel file",
+      message: "Error mapping Excel file",
       error: err.message,
       stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
@@ -300,4 +312,5 @@ const uploadInventoryExcel = async (req, res) => {
 
 module.exports = {
   uploadInventoryExcel,
+  mapInventoryExcel,
 };

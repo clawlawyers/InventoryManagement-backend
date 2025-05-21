@@ -12,6 +12,10 @@ const InventoryProductSchema = new Schema({
     type: Date,
     default: Date.now,
   },
+  design_code: {
+    type: String,
+    required: false,
+  },
   category_code: {
     //category code
     type: String,
@@ -25,6 +29,7 @@ const InventoryProductSchema = new Schema({
   stock_amount: {
     type: Number,
     default: 0,
+    required: false,
   },
   image: {
     type: String,
