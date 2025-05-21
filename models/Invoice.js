@@ -11,7 +11,7 @@ const InvoiceSchema = new Schema({
     required: true,
   },
   item: {
-    type: schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "Inventory",
     required: true,
   },

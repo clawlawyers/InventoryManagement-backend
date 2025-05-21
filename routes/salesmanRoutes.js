@@ -19,5 +19,7 @@ router.get("/manager/:managerId", getSalesmenByManager);
 // Client routes (related to salesmen)
 router.post("/:salesmanId/clients", createClient);
 router.get("/:salesmanId/clients", getClientsBySalesman);
+// This route is now handled in companyRoutes.js
+// Removing to avoid route conflict
 
 module.exports = router;

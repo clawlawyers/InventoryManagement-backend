@@ -3,24 +3,28 @@ const Schema = mongoose.Schema;
 
 const InventoryProductSchema = new Schema({
   bail_number: {
+    // product ID
     type: String,
     required: true,
   },
   bail_date: {
+    // defualt
     type: Date,
-    required: true,
+    default: Date.now,
   },
   category_code: {
+    //category code
     type: String,
-    required: true,
+    default: "",
   },
   lot_number: {
+    // lot number
     type: String,
-    required: true,
+    default: "",
   },
   stock_amount: {
     type: Number,
-    required: true,
+    default: 0,
   },
   image: {
     type: String,
