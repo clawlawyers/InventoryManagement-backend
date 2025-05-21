@@ -10,6 +10,7 @@ const {
 // Manager routes
 router.get("/", getAllManagers);
 router.get("/companies", getCompaniesByManager);
+router.get("/:id/companies", getCompaniesByManager); // Add this new route
 router.get("/:id", getManagerById);
 router.post("/", createManager);
 

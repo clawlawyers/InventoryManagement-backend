@@ -70,8 +70,8 @@ const uploadInventoryExcel = async (req, res) => {
 
         await inventory.save();
 
-        // Add inventory to company
-        company.inventories.push(inventory._id);
+        // Set inventory for company (one company can only have one inventory)
+        company.inventory = inventory._id;
         await company.save();
 
         processingResults.success++;

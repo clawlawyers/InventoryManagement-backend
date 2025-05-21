@@ -1,4 +1,6 @@
 const Manager = require("../models/Manager");
+const mongoose = require("mongoose");
+const { isValidObjectId } = mongoose;
 
 // GET all managers
 const getAllManagers = async (req, res) => {
@@ -30,7 +32,20 @@ const createSalesman = async (req, res) => {
 };
 const getCompaniesByManager = async (req, res) => {
   try {
-    const managerId = req.query.managerId;
+    // Get managerId from either query parameter or route parameter
+    const managerId = req.query.managerId || req.params.id;
+
+    if (!managerId) {
+      return res.status(400).json({ message: "Manager ID is required" });
+    }
+
+    // Check if the ID is a valid ObjectId
+    if (!isValidObjectId(managerId)) {
+      return res.status(400).json({
+        message: "Invalid manager ID format. Must be a valid MongoDB ObjectId.",
+      });
+    }
+
     const manager = await Manager.findById(managerId).populate("companies");
 
     if (!manager) {
@@ -46,7 +61,16 @@ const getCompaniesByManager = async (req, res) => {
 // Make sure getManagerById is defined
 const getManagerById = async (req, res) => {
   try {
-    const manager = await Manager.findById(req.params.id);
+    const managerId = req.params.id;
+
+    // Check if the ID is a valid ObjectId
+    if (!isValidObjectId(managerId)) {
+      return res.status(400).json({
+        message: "Invalid manager ID format. Must be a valid MongoDB ObjectId.",
+      });
+    }
+
+    const manager = await Manager.findById(managerId);
 
     if (!manager) {
       return res.status(404).json({ message: "Manager not found" });

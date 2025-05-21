@@ -1,17 +1,21 @@
 const Company = require("../models/Company");
 const Inventory = require("../models/Inventory");
 
-// GET: Get inventories by company ID
-const getInventoriesByCompanyId = async (req, res) => {
+// GET: Get inventory by company ID
+const getInventoryByCompanyId = async (req, res) => {
   try {
     const companyId = req.params.id;
-    const company = await Company.findById(companyId).populate("inventories");
+    const company = await Company.findById(companyId).populate("inventory");
 
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
 
-    res.json(company.inventories);
+    if (!company.inventory) {
+      return res.json(null); // Return null if no inventory exists
+    }
+
+    res.json(company.inventory); // Return the single inventory object
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -55,7 +59,7 @@ const createCompany = async (req, res) => {
 };
 
 module.exports = {
-  getInventoriesByCompanyId,
+  getInventoryByCompanyId,
   getCompanyById,
   createCompany,
 };
