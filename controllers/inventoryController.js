@@ -38,4 +38,24 @@ const createInventory = async (req, res) => {
   }
 };
 
-module.exports = { createInventory };
+const getProductsByInventoryId = async (req, res) => {
+  try {
+    if (req.user.type !== "manager") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const inventoryId = req.params.id;
+    const inventory = await Inventory.findById(inventoryId).populate(
+      "products"
+    );
+
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory not found" });
+    }
+
+    res.json(inventory.products);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+module.exports = { createInventory, getProductsByInventoryId };
