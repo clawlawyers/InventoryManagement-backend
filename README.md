@@ -5,6 +5,7 @@ A Node.js application for managing textile inventory, companies, and salesmen.
 ## Setup
 
 1. Install dependencies:
+
    ```
    npm install
    ```
@@ -16,16 +17,36 @@ A Node.js application for managing textile inventory, companies, and salesmen.
 
 ## Database Seeding
 
-To populate your database with sample data, run:
+### Basic Seeding
+
+To populate your database with basic sample data, run:
 
 ```
 npm run seed
 ```
 
 This will:
+
 - Clear all existing data in the database
 - Create sample managers, companies, salesmen, and inventory items
 - Establish relationships between these entities
+
+### Full Database Seeding
+
+To populate your database with comprehensive sample data, run:
+
+```
+npm run seed:full
+```
+
+This will:
+
+- Clear all existing data in the database
+- Create sample managers, companies, salesmen, clients, and inventory items
+- Create inventory products for each inventory
+- Generate sample invoices
+- Create sample Excel upload records
+- Establish relationships between all entities
 
 ## Running the Application
 
@@ -43,39 +64,141 @@ npm run dev
 
 ## API Endpoints
 
+### Authentication
+
+- `POST /api/auth/manager/login` - Manager login
+- `POST /api/auth/manager/signup` - Manager signup
+- `POST /api/auth/salesman/login` - Salesman login
+- `GET /api/auth/getVerify` - Verify authentication token
+
 ### Managers
-- `GET /managers` - Get all managers
+
+- `GET /api/managers` - Get all managers
+- `GET /api/managers/:id` - Get manager by ID
+- `POST /api/managers` - Create a new manager
+- `GET /api/managers/companies` - Get companies by manager ID
 
 ### Companies
-- `POST /companies/inventories` - Get inventories by company ID
 
-### Managers to Companies
-- `POST /managers/companies` - Get companies by manager ID
+- `POST /api/companies/create` - Create a new company
+- `GET /api/companies/:id` - Get company by ID
+- `GET /api/companies/:id/inventories` - Get inventories by company ID
+- `POST /api/companies/:companyId/upload-inventory` - Upload inventory Excel file
+
+### Salesmen
+
+- `POST /api/salesmen` - Create a new salesman
+- `GET /api/salesmen` - Get all salesmen
+- `GET /api/salesmen/manager/:managerId` - Get salesmen by manager ID
+
+### Clients
+
+- `GET /api/clients` - Get all clients
+- `GET /api/clients/:id` - Get client by ID
+- `PUT /api/clients/:id` - Update client
+- `DELETE /api/clients/:id` - Delete client
+- `POST /api/salesmen/:salesmanId/clients` - Create a new client for a salesman
+- `GET /api/salesmen/:salesmanId/clients` - Get clients by salesman ID
+
+### Inventory
+
+- `POST /api/inventory/create` - Create a new inventory
+- `GET /api/inventory/products/:id` - Get products by inventory ID
+- `POST /api/inventory/products` - Create a new inventory product
+- `GET /api/inventory/:inventoryId/products` - Get all products in an inventory
+- `GET /api/inventory/products/:productId` - Get a specific product by ID
+- `PUT /api/inventory/products/:productId` - Update a product
+- `DELETE /api/inventory/:inventoryId/products/:productId` - Delete a product
+
+### Invoices
+
+- `GET /api/invoices` - Get all invoices
+- `POST /api/invoices` - Create a new invoice
 
 ## Models
 
 ### Manager
+
 - name: String (required)
 - email: String (required, unique)
-- password: String (required)
+- password: String (required, hashed)
+- phoneNumber: String (required)
+- GSTNumber: String (required)
 - companies: Array of Company references
 - salesmen: Array of Salesman references
 
 ### Company
+
 - name: String (required)
-- inventories: Array of Inventory references
+- address: String (required)
+- city: String (required)
+- state: String (required)
+- zipCode: String (required)
+- phoneNumber: String (required)
+- email: String (required)
+- inventory: Reference to Inventory
 
 ### Inventory
+
+- inventoryName: String (required)
+- company: Reference to Company (required)
+- products: Array of InventoryProduct references
+
+### InventoryProduct
+
 - bail_number: String (required)
 - bail_date: Date (required)
 - category_code: String (required)
 - lot_number: String (required)
 - stock_amount: Number (required)
-- company: Reference to Company (required)
 
 ### Salesman
+
 - user_id: String (required, unique)
 - name: String (required)
 - user_type: String (required, default: "salesman")
-- permissions: Array of Strings (required)
+- phone: String (required)
 - password: String (required)
+- permissions: Reference to Permission
+- manager: Reference to Manager (required)
+
+### Client
+
+- name: String (required)
+- phone: String (required, unique)
+- email: String
+- address: String (required)
+- city: String (required)
+- state: String (required)
+- zipCode: String (required)
+- notes: String
+- salesman: Reference to Salesman (required)
+- invoices: Array of Invoice references
+
+### Invoice
+
+- name: String (required)
+- address: String (required)
+- item: Reference to Inventory (required)
+- purchased: Number (default: 0)
+- paid: Number (default: 0)
+- pending_total: Number (default: 0)
+- amount: Number (default: 0)
+
+### Permission
+
+- add: Boolean
+- delete: Boolean
+- description: String
+- salesman: Reference to Salesman
+
+### ExcelUpload
+
+- filename: String (required)
+- originalname: String (required)
+- path: String (required)
+- size: Number (required)
+- uploadDate: Date (default: current date)
+- salesman: Reference to Salesman
+- processed: Boolean (default: false)
+- processingResults: Object with success count, error count, and details

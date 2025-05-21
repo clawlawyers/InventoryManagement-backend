@@ -8,19 +8,19 @@ const InventoryProductSchema = new Schema({
   },
   bail_date: {
     type: Date,
-    required: true,
+    default: Date.now,
   },
   category_code: {
     type: String,
-    required: true,
+    default: "",
   },
   lot_number: {
     type: String,
-    required: true,
+    default: "",
   },
   stock_amount: {
     type: Number,
-    required: true,
+    default: 0,
   },
 });
 
