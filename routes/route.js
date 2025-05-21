@@ -8,6 +8,7 @@ const salesmanRoutes = require("./salesmanRoutes");
 const clientRoutes = require("./clientRoutes");
 const authRoutes = require("./authRoutes");
 const inventoryRoutes = require("./inventoryRoutes");
+const uploadRoute = require("./uploadRoute");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -16,5 +17,6 @@ router.use("/companies", companyRoutes);
 router.use("/salesmen", salesmanRoutes);
 router.use("/clients", clientRoutes);
 router.use("/inventory", inventoryRoutes);
+router.use("/upload", uploadRoute);
 
 module.exports = router;

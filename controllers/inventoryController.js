@@ -40,10 +40,13 @@ const createInventory = async (req, res) => {
 
 const getProductsByInventoryId = async (req, res) => {
   try {
+    console.log("Req is coming");
     if (req.user.type !== "manager") {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const inventoryId = req.params.id;
+
+    console.log(inventoryId);
     const inventory = await Inventory.findById(inventoryId).populate(
       "products"
     );
