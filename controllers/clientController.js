@@ -1,5 +1,6 @@
 const Client = require("../models/Client");
 const Salesman = require("../models/Salesman");
+const Manager = require("../models/Manager");
 
 // Create a new client
 const createClient = async (req, res) => {
@@ -143,8 +144,105 @@ const deleteClient = async (req, res) => {
   }
 };
 
+// Create a new client (can be done by both manager and salesman)
+const createClientByManagerOrSalesman = async (req, res) => {
+  try {
+    const { name, phone, firmName, firmGSTNumber, email, address, salesmanId } =
+      req.body;
+
+    // Get user information from the authentication middleware
+    // For testing without auth, provide default values
+    const { user, type } = req.user || {
+      user: { _id: "test-manager-id", name: "Test Manager" },
+      type: "manager",
+    };
+
+    // Validate required fields
+    if (!name || !phone || !address) {
+      return res.status(400).json({
+        message: "Name, phone, and address are required",
+      });
+    }
+
+    // Check if phone number is already in use
+    const existingClient = await Client.findOne({ phone });
+    if (existingClient) {
+      return res.status(400).json({
+        message: "Phone number is already registered to another client",
+      });
+    }
+
+    let assignedSalesmanId = null;
+
+    // Handle salesman assignment based on user type
+    if (type === "manager") {
+      // If manager is creating the client, they can optionally assign a salesman
+      if (salesmanId) {
+        // Verify that the salesman exists and belongs to this manager
+        const salesman = await Salesman.findById(salesmanId);
+        if (!salesman) {
+          return res.status(404).json({ message: "Salesman not found" });
+        }
+
+        // Check if the salesman belongs to this manager
+        if (salesman.manager.toString() !== user._id.toString()) {
+          return res.status(403).json({
+            message: "You can only assign clients to your own salesmen",
+          });
+        }
+
+        assignedSalesmanId = salesmanId;
+      }
+      // If no salesmanId provided, client will be created without a salesman assignment
+    } else if (type === "salesman") {
+      // If salesman is creating the client, assign it to themselves
+      assignedSalesmanId = user._id;
+    } else {
+      return res.status(403).json({
+        message: "Only managers and salesmen can create clients",
+      });
+    }
+
+    // Create the client
+    const clientData = {
+      name,
+      phone,
+      address,
+    };
+
+    // Add optional fields if provided
+    if (firmName) clientData.firmName = firmName;
+    if (firmGSTNumber) clientData.firmGSTNumber = firmGSTNumber;
+    if (email) clientData.email = email;
+    if (assignedSalesmanId) clientData.salesman = assignedSalesmanId;
+
+    const client = new Client(clientData);
+
+    // Save the client
+    await client.save();
+
+    // Populate the salesman information if assigned
+    await client.populate("salesman", "name user_id phone");
+
+    // Return the client
+    res.status(201).json({
+      message: "Client created successfully",
+      client,
+      createdBy: {
+        id: user._id,
+        name: user.name,
+        type: type,
+      },
+    });
+  } catch (err) {
+    console.error("Error creating client:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createClient,
+  createClientByManagerOrSalesman,
   getAllClients,
   getClientsBySalesman,
   getClientById,

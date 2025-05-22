@@ -115,6 +115,12 @@ npm run dev
 - `GET /api/invoices` - Get all invoices
 - `POST /api/invoices` - Create a new invoice
 
+### Orders
+
+- `POST /api/orders/create` - Create a new order (Manager/Salesman only)
+- `GET /api/orders` - Get all orders (Manager sees all, Salesman sees own)
+- `GET /api/orders/:id` - Get order by ID
+
 ## Models
 
 ### Manager
@@ -184,6 +190,18 @@ npm run dev
 - paid: Number (default: 0)
 - pending_total: Number (default: 0)
 - amount: Number (default: 0)
+
+### Order
+
+- productName: String (required)
+- category: String (required)
+- quantity: Number (required, min: 1)
+- client: Reference to Client (required)
+- createdBy: Reference to Manager or Salesman (required)
+- creatorType: String (required, enum: ["Manager", "Salesman"])
+- status: String (enum: ["pending", "confirmed", "processing", "completed", "cancelled"], default: "pending")
+- createdAt: Date (default: current date)
+- updatedAt: Date (default: current date)
 
 ### Permission
 
