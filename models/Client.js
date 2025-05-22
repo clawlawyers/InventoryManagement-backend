@@ -11,6 +11,14 @@ const ClientSchema = new Schema({
     required: true,
     unique: true,
   },
+  firmName: {
+    type: String,
+    required: false,
+  },
+  firmGSTNumber: {
+    type: String,
+    required: false,
+  },
   email: {
     type: String,
     required: false,
@@ -19,22 +27,6 @@ const ClientSchema = new Schema({
     type: String,
     required: true,
   },
-  city: {
-    type: String,
-    required: true,
-  },
-  state: {
-    type: String,
-    required: true,
-  },
-  zipCode: {
-    type: String,
-    required: true,
-  },
-  notes: {
-    type: String,
-    required: false,
-  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -42,7 +34,7 @@ const ClientSchema = new Schema({
   salesman: {
     type: Schema.Types.ObjectId,
     ref: "Salesman",
-    required: true,
+    required: false,
   },
   // For potential future use - linking clients to orders/invoices
   invoices: [
