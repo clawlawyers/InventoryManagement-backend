@@ -117,9 +117,69 @@ npm run dev
 
 ### Orders
 
-- `POST /api/orders/create` - Create a new order (Manager/Salesman only)
+- `POST /api/orders/create` - Create a new order (Manager/Salesman only) - Supports both single and multiple products
+- `POST /api/orders/create-multiple` - Create a new order with multiple products (Manager/Salesman only)
 - `GET /api/orders` - Get all orders (Manager sees all, Salesman sees own)
 - `GET /api/orders/:id` - Get order by ID
+
+### Payments
+
+- `POST /api/payments/create` - Record a payment for an order (Manager/Salesman only)
+- `GET /api/payments` - Get all payments (Manager sees all, Salesman sees own)
+- `GET /api/payments/order/:orderId` - Get all payments for a specific order
+- `GET /api/payments/:id` - Get payment by ID
+
+#### Order Creation Formats
+
+**Single Product (Legacy format):**
+
+```json
+{
+  "productName": "Cotton Fabric",
+  "category": "Textiles",
+  "quantity": 100,
+  "clientId": "client_id_here"
+}
+```
+
+**Inventory-Based Order Creation:**
+
+```json
+{
+  "products": [
+    {
+      "inventoryProductId": "inventory_product_id_1",
+      "quantity": 10,
+      "unitPrice": 50
+    },
+    {
+      "inventoryProductId": "inventory_product_id_2",
+      "quantity": 5
+    }
+  ],
+  "clientId": "client_id_here",
+  "paymentDueDate": "2025-06-01"
+}
+```
+
+**Note:**
+
+- Orders now use existing inventory products (bail_number as product name, design_code as category)
+- Stock amounts are automatically decreased when orders are created
+- Unit price can be overridden or will use the price from inventory product
+- System validates stock availability before creating orders
+
+#### Payment Creation Format
+
+```json
+{
+  "orderId": "order_id_here",
+  "amount": 3000,
+  "paymentMethod": "cash",
+  "paymentReference": "TXN123456",
+  "notes": "Partial payment received"
+}
+```
 
 ## Models
 
@@ -152,11 +212,14 @@ npm run dev
 
 ### InventoryProduct
 
-- bail_number: String (required)
-- bail_date: Date (required)
-- category_code: String (required)
-- lot_number: String (required)
-- stock_amount: Number (required)
+- bail_number: String (required) - Used as product name in orders
+- bail_date: Date (default: current date)
+- design_code: String - Used as category in orders
+- category_code: String
+- lot_number: String
+- stock_amount: Number (default: 0) - Automatically decreased when orders are created
+- price: Number (min: 0, default: 0) - Unit price for the product
+- image: String (optional)
 
 ### Salesman
 
@@ -193,13 +256,39 @@ npm run dev
 
 ### Order
 
-- productName: String (required)
-- category: String (required)
-- quantity: Number (required, min: 1)
+- products: Array of OrderProduct objects (required, at least one product)
+  - inventoryProduct: Reference to InventoryProduct (required)
+  - quantity: Number (required, min: 1)
+  - unitPrice: Number (required, min: 0)
+  - totalPrice: Number (required, calculated from unitPrice \* quantity)
+- productName: String (legacy field for backward compatibility)
+- category: String (legacy field for backward compatibility)
+- quantity: Number (legacy field for backward compatibility)
 - client: Reference to Client (required)
 - createdBy: Reference to Manager or Salesman (required)
 - creatorType: String (required, enum: ["Manager", "Salesman"])
 - status: String (enum: ["pending", "confirmed", "processing", "completed", "cancelled"], default: "pending")
+- totalAmount: Number (calculated from products, default: 0)
+- paidAmount: Number (sum of all payments, default: 0)
+- dueAmount: Number (totalAmount - paidAmount, calculated automatically)
+- paymentStatus: String (enum: ["pending", "partial", "paid", "overdue"], default: "pending")
+- paymentDueDate: Date (optional)
+- payments: Array of Payment references
+- createdAt: Date (default: current date)
+- updatedAt: Date (default: current date)
+
+### Payment
+
+- order: Reference to Order (required)
+- client: Reference to Client (required)
+- amount: Number (required, min: 0)
+- paymentMethod: String (enum: ["cash", "bank_transfer", "cheque", "upi", "card", "other"], default: "cash")
+- paymentReference: String (optional, for transaction ID, cheque number, etc.)
+- paymentDate: Date (default: current date)
+- notes: String (optional)
+- receivedBy: Reference to Manager or Salesman (required)
+- receivedByType: String (required, enum: ["Manager", "Salesman"])
+- status: String (enum: ["pending", "confirmed", "failed", "refunded"], default: "confirmed")
 - createdAt: Date (default: current date)
 - updatedAt: Date (default: current date)
 

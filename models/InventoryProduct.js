@@ -31,6 +31,12 @@ const InventoryProductSchema = new Schema({
     default: 0,
     required: false,
   },
+  price: {
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0,
+  },
   image: {
     type: String,
     required: false,

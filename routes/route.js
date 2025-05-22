@@ -11,6 +11,8 @@ const inventoryRoutes = require("./inventoryRoutes");
 const invoiceRoutes = require("./invoiceRoutes");
 const uploadRoute = require("./uploadRoute");
 const orderRoutes = require("./orderRoutes");
+const cartRoutes = require("./cartRoutes");
+const paymentRoutes = require("./paymentRoutes");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -22,5 +24,7 @@ router.use("/inventory", inventoryRoutes);
 router.use("/invoices", invoiceRoutes);
 router.use("/upload", uploadRoute);
 router.use("/orders", orderRoutes);
+router.use("/cart", cartRoutes);
+router.use("/payments", paymentRoutes);
 
 module.exports = router;

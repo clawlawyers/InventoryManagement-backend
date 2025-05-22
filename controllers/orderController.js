@@ -2,32 +2,32 @@ const Order = require("../models/Order");
 const Client = require("../models/Client");
 const Manager = require("../models/Manager");
 const Salesman = require("../models/Salesman");
+const InventoryProduct = require("../models/InventoryProduct");
 const mongoose = require("mongoose");
 
-// Create a new order
+// Create a new order using inventory products
 const createOrder = async (req, res) => {
   try {
-    const { productName, category, quantity, clientId } = req.body;
+    const { products, clientId, paymentDueDate } = req.body;
 
-    // // Get user information from the authentication middleware
-    // const { user, type } = req.user || {
-    //   user: { _id: new mongoose.Types.ObjectId(), name: "Test User" },
-    //   type: "manager",
-    // };
-
-    const { user, type } = req.user;
+    // Get user information from the authentication middleware
+    // For testing without auth, provide default values
+    const { user, type } = req.user || {
+      user: { _id: new mongoose.Types.ObjectId(), name: "Test User" },
+      type: "manager",
+    };
 
     // Validate required fields
-    if (!productName || !category || !quantity || !clientId) {
+    if (!products || !Array.isArray(products) || products.length === 0) {
       return res.status(400).json({
-        message: "Product name, category, quantity, and client ID are required",
+        message:
+          "Products array is required and must contain at least one product",
       });
     }
 
-    // Validate quantity is a positive number
-    if (quantity <= 0) {
+    if (!clientId) {
       return res.status(400).json({
-        message: "Quantity must be a positive number",
+        message: "Client ID is required",
       });
     }
 
@@ -58,26 +58,114 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // Create the order
-    const newOrder = new Order({
-      productName,
-      category,
-      quantity,
+    let orderProducts = [];
+    let totalOrderAmount = 0;
+
+    // Process each product in the order
+    for (let i = 0; i < products.length; i++) {
+      const productOrder = products[i];
+
+      // Validate required fields
+      if (!productOrder.inventoryProductId || !productOrder.quantity) {
+        return res.status(400).json({
+          message: `Product ${
+            i + 1
+          }: inventoryProductId and quantity are required`,
+        });
+      }
+
+      if (productOrder.quantity <= 0) {
+        return res.status(400).json({
+          message: `Product ${i + 1}: Quantity must be a positive number`,
+        });
+      }
+
+      // Find the inventory product
+      const inventoryProduct = await InventoryProduct.findById(
+        productOrder.inventoryProductId
+      );
+      if (!inventoryProduct) {
+        return res.status(404).json({
+          message: `Product ${i + 1}: Inventory product not found`,
+        });
+      }
+
+      // Check if enough stock is available
+      if (inventoryProduct.stock_amount < productOrder.quantity) {
+        return res.status(400).json({
+          message: `Product ${i + 1}: Insufficient stock. Available: ${
+            inventoryProduct.stock_amount
+          }, Requested: ${productOrder.quantity}`,
+        });
+      }
+
+      // Use the price from inventory product or allow override
+      const unitPrice = productOrder.unitPrice || inventoryProduct.price;
+      if (unitPrice <= 0) {
+        return res.status(400).json({
+          message: `Product ${i + 1}: Unit price must be greater than 0`,
+        });
+      }
+
+      const totalPrice = unitPrice * productOrder.quantity;
+
+      orderProducts.push({
+        inventoryProduct: inventoryProduct._id,
+        quantity: productOrder.quantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+      });
+
+      totalOrderAmount += totalPrice;
+    }
+
+    // Create the order with products array
+    const orderData = {
+      products: orderProducts,
       client: clientId,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "Salesman",
-    });
+      totalAmount: totalOrderAmount,
+    };
 
+    // Add payment due date if provided
+    if (paymentDueDate) {
+      orderData.paymentDueDate = new Date(paymentDueDate);
+    }
+
+    const newOrder = new Order(orderData);
     await newOrder.save();
 
-    // Populate the order with client and creator details for response
+    // Update inventory stock amounts
+    for (let i = 0; i < products.length; i++) {
+      const productOrder = products[i];
+      await InventoryProduct.findByIdAndUpdate(
+        productOrder.inventoryProductId,
+        { $inc: { stock_amount: -productOrder.quantity } }
+      );
+    }
+
+    // Populate the order with client, creator, and inventory product details for response
     const populatedOrder = await Order.findById(newOrder._id)
       .populate("client", "name phone firmName address")
-      .populate("createdBy", "name email phone");
+      .populate("createdBy", "name email phone")
+      .populate({
+        path: "products.inventoryProduct",
+        select:
+          "bail_number design_code category_code lot_number stock_amount price",
+      });
 
     res.status(201).json({
       message: "Order created successfully",
       order: populatedOrder,
+      productCount: orderProducts.length,
+      paymentSummary: {
+        totalAmount: newOrder.totalAmount,
+        paidAmount: newOrder.paidAmount,
+        dueAmount: newOrder.dueAmount,
+        paymentStatus: newOrder.paymentStatus,
+        paymentDueDate: newOrder.paymentDueDate,
+      },
     });
   } catch (error) {
     console.error("Error creating order:", error);
@@ -99,12 +187,22 @@ const getAllOrders = async (req, res) => {
       orders = await Order.find()
         .populate("client", "name phone firmName address")
         .populate("createdBy", "name email phone")
+        .populate({
+          path: "products.inventoryProduct",
+          select:
+            "bail_number design_code category_code lot_number stock_amount price",
+        })
         .sort({ createdAt: -1 });
     } else if (type === "salesman") {
       // Salesmen can only see orders they created
       orders = await Order.find({ createdBy: user._id })
         .populate("client", "name phone firmName address")
         .populate("createdBy", "name email phone")
+        .populate({
+          path: "products.inventoryProduct",
+          select:
+            "bail_number design_code category_code lot_number stock_amount price",
+        })
         .sort({ createdAt: -1 });
     } else {
       return res.status(403).json({
@@ -133,7 +231,12 @@ const getOrderById = async (req, res) => {
 
     const order = await Order.findById(id)
       .populate("client", "name phone firmName address")
-      .populate("createdBy", "name email phone");
+      .populate("createdBy", "name email phone")
+      .populate({
+        path: "products.inventoryProduct",
+        select:
+          "bail_number design_code category_code lot_number stock_amount price",
+      });
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
