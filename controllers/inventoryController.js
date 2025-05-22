@@ -38,7 +38,7 @@ const createInventory = async (req, res) => {
   }
 };
 
-const getProductsByInventoryId = async (req, res) => {
+const getProductByProductId = async (req, res) => {
   try {
     console.log("Req is coming");
     if (req.user.type !== "manager") {
@@ -61,4 +61,4 @@ const getProductsByInventoryId = async (req, res) => {
   }
 };
 
-module.exports = { createInventory, getProductsByInventoryId };
+module.exports = { createInventory, getProductByProductId };

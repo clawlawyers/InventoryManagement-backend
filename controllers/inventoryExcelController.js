@@ -185,22 +185,12 @@ const mapInventoryExcel = async (req, res) => {
       headers: headers,
     };
 
-    // Get inventory name from request body or use default
-    const finalInventoryName =
-      inventoryName || `Inventory-${new Date().toISOString().split("T")[0]}`;
-
-    // Create a new inventory document
-    const inventoryDoc = new Inventory({
-      inventoryName: finalInventoryName,
-      company: companyId,
-      products: [],
-    });
-
-    await inventoryDoc.save();
-
-    // Set inventory for company
-    company.inventory = inventoryDoc._id;
-    await company.save();
+    const inventoryDoc = await Inventory.findOne({ company: companyId });
+    if (!inventoryDoc) {
+      return res.status(404).json({
+        message: "Inventory not found",
+      });
+    }
 
     // Process each row in the Excel file
     for (let i = 0; i < data.length; i++) {

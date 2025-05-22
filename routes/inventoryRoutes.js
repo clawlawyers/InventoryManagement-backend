@@ -2,7 +2,7 @@ const express = require("express");
 const { requireAuth } = require("../middleware/requireAuth");
 const {
   createInventory,
-  getProductsByInventoryId,
+  getProductByProductId,
 } = require("../controllers/inventoryController");
 const {
   createInventoryProduct,
@@ -14,13 +14,13 @@ const {
 const router = express.Router();
 
 router.post("/create", requireAuth, createInventory);
-router.get("/products/:id", requireAuth, getProductsByInventoryId);
+// router.get("/product/:id", requireAuth, getProductByProductId);
 
 // Inventory Product routes
 router.post("/products", requireAuth, createInventoryProduct);
 router.get("/:inventoryId/products", requireAuth, getInventoryProducts);
-router.get("/products/:productId", requireAuth, getInventoryProductById);
-router.put("/products/:productId", requireAuth, updateInventoryProduct);
+router.get("/product/:productId", requireAuth, getInventoryProductById);
+router.put("/product/:productId", requireAuth, updateInventoryProduct);
 router.delete(
   "/:inventoryId/products/:productId",
   requireAuth,

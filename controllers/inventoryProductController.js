@@ -5,19 +5,27 @@ const mongoose = require("mongoose");
 // Create a new inventory product manually
 const createInventoryProduct = async (req, res) => {
   try {
-    const { 
-      inventoryId, 
-      bail_number, 
-      bail_date, 
-      category_code, 
-      lot_number, 
-      stock_amount 
+    const {
+      inventoryId,
+      bail_number,
+      bail_date,
+      category_code,
+      lot_number,
+      stock_amount,
     } = req.body;
 
     // Validate required fields
-    if (!inventoryId || !bail_number || !bail_date || !category_code || !lot_number || !stock_amount) {
-      return res.status(400).json({ 
-        message: "All fields are required: inventoryId, bail_number, bail_date, category_code, lot_number, stock_amount" 
+    if (
+      !inventoryId ||
+      !bail_number ||
+      !bail_date ||
+      !category_code ||
+      !lot_number ||
+      !stock_amount
+    ) {
+      return res.status(400).json({
+        message:
+          "All fields are required: inventoryId, bail_number, bail_date, category_code, lot_number, stock_amount",
       });
     }
 
@@ -33,7 +41,7 @@ const createInventoryProduct = async (req, res) => {
       bail_date: new Date(bail_date),
       category_code,
       lot_number,
-      stock_amount: Number(stock_amount)
+      stock_amount: Number(stock_amount),
     });
 
     // Save the product
@@ -45,7 +53,7 @@ const createInventoryProduct = async (req, res) => {
 
     res.status(201).json({
       message: "Product added to inventory successfully",
-      product: newProduct
+      product: newProduct,
     });
   } catch (err) {
     console.error("Error adding product to inventory:", err);
@@ -59,7 +67,9 @@ const getInventoryProducts = async (req, res) => {
     const { inventoryId } = req.params;
 
     // Check if inventory exists
-    const inventory = await Inventory.findById(inventoryId).populate("products");
+    const inventory = await Inventory.findById(inventoryId).populate(
+      "products"
+    );
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
     }
@@ -94,6 +104,10 @@ const updateInventoryProduct = async (req, res) => {
     const { productId } = req.params;
     const updateData = req.body;
 
+    console.log("Update data:", req.body);
+
+    console.log(updateData);
+
     // Find and update the product
     const updatedProduct = await InventoryProduct.findByIdAndUpdate(
       productId,
@@ -107,7 +121,7 @@ const updateInventoryProduct = async (req, res) => {
 
     res.json({
       message: "Product updated successfully",
-      product: updatedProduct
+      product: updatedProduct,
     });
   } catch (err) {
     console.error("Error updating product:", err);
@@ -153,5 +167,5 @@ module.exports = {
   getInventoryProducts,
   getInventoryProductById,
   updateInventoryProduct,
-  deleteInventoryProduct
+  deleteInventoryProduct,
 };

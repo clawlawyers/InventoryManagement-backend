@@ -97,4 +97,48 @@ router.post(
   }
 );
 
+router.post(
+  "/upload-image",
+  requireAuth,
+  (req, res, next) => {
+    upload.single("image")(req, res, (err) => {
+      if (err) {
+        return handleMulterError(err, req, res, next);
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      if (req.user.type !== "manager") {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      const filePath = req.file.path;
+
+      // Upload image to cloudinary
+      const result = await cloudinary.uploader.upload(filePath, {
+        folder: "uploads",
+        resource_type: "image",
+      });
+
+      // Delete local file after upload
+      fs.unlinkSync(filePath);
+
+      // Return only the image URL
+      res.status(200).json({
+        message: "Image uploaded successfully",
+        url: result.secure_url,
+      });
+    } catch (err) {
+      console.error("Upload error:", err);
+      res.status(500).json({ error: "Image upload failed" });
+    }
+  }
+);
+
 module.exports = router;
