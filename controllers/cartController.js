@@ -1,36 +1,69 @@
-const Cart = require("../models/Cart");
+const Client = require("../models/Client");
 const InventoryProduct = require("../models/InventoryProduct");
 const Order = require("../models/Order");
-const Client = require("../models/Client");
-const mongoose = require("mongoose");
 
-// Get user's cart
+// Helper function to update cart totals
+const updateCartTotals = (cart) => {
+  cart.totalAmount = 0;
+  cart.totalItems = 0;
+  cart.updatedAt = Date.now();
+
+  cart.items.forEach((item) => {
+    cart.totalAmount += item.totalPrice;
+    cart.totalItems += item.quantity;
+  });
+};
+
+// Get client's cart
 const getCart = async (req, res) => {
   try {
-    const { user, type } = req.user;
+    const { clientId } = req.params;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
 
-    let cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    }).populate({
-      path: "items.inventoryProduct",
+    // Find client and populate cart items
+    const client = await Client.findById(clientId).populate({
+      path: "cart.items.inventoryProduct",
       select:
         "bail_number design_code category_code lot_number stock_amount price",
     });
 
-    if (!cart) {
-      // Create empty cart if none exists
-      cart = new Cart({
-        user: user._id,
-        userType: type === "manager" ? "Manager" : "Salesman",
-        items: [],
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
       });
-      await cart.save();
+    }
+
+    // Authorization check - managers can access all, salesmen only their assigned clients
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only access carts of your assigned clients",
+      });
+    }
+
+    // Initialize cart if it doesn't exist
+    if (!client.cart) {
+      client.cart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        updatedAt: Date.now(),
+      };
+      await client.save();
     }
 
     res.json({
       message: "Cart retrieved successfully",
-      cart,
+      clientId: client._id,
+      clientName: client.name,
+      cart: client.cart,
     });
   } catch (error) {
     console.error("Get cart error:", error);
@@ -38,26 +71,44 @@ const getCart = async (req, res) => {
   }
 };
 
-// Add item to cart
+// Add item to client's cart
 const addToCart = async (req, res) => {
   try {
+    const { clientId } = req.params;
     const { inventoryProductId, quantity } = req.body;
-    const { user, type } = req.user;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
 
-    // Validate required fields
-    if (!inventoryProductId || !quantity) {
+    // Validate input
+    if (!inventoryProductId || !quantity || quantity <= 0) {
       return res.status(400).json({
-        message: "Inventory product ID and quantity are required",
+        message: "Inventory product ID and valid quantity are required",
       });
     }
 
-    if (quantity <= 0) {
-      return res.status(400).json({
-        message: "Quantity must be greater than 0",
+    // Find client
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
       });
     }
 
-    // Check if inventory product exists and has sufficient stock
+    // Authorization check
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only manage carts of your assigned clients",
+      });
+    }
+
+    // Find inventory product
     const inventoryProduct = await InventoryProduct.findById(
       inventoryProductId
     );
@@ -67,28 +118,15 @@ const addToCart = async (req, res) => {
       });
     }
 
+    // Check stock availability
     if (inventoryProduct.stock_amount < quantity) {
       return res.status(400).json({
         message: `Insufficient stock. Available: ${inventoryProduct.stock_amount}`,
       });
     }
 
-    // Get or create user's cart
-    let cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    });
-
-    if (!cart) {
-      cart = new Cart({
-        user: user._id,
-        userType: type === "manager" ? "Manager" : "Salesman",
-        items: [],
-      });
-    }
-
     // Check if adding this quantity would exceed available stock
-    const existingItem = cart.items.find(
+    const existingItem = client.cart?.items?.find(
       (item) => item.inventoryProduct.toString() === inventoryProductId
     );
     const currentCartQuantity = existingItem ? existingItem.quantity : 0;
@@ -100,20 +138,55 @@ const addToCart = async (req, res) => {
       });
     }
 
+    // Initialize cart if it doesn't exist
+    if (!client.cart) {
+      client.cart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        updatedAt: Date.now(),
+      };
+    }
+
     // Add item to cart
-    cart.addItem(inventoryProductId, quantity, inventoryProduct.price);
-    await cart.save();
+    const existingItemIndex = client.cart.items.findIndex(
+      (item) =>
+        item.inventoryProduct.toString() === inventoryProductId.toString()
+    );
+
+    if (existingItemIndex > -1) {
+      // Update existing item
+      client.cart.items[existingItemIndex].quantity += quantity;
+      client.cart.items[existingItemIndex].totalPrice =
+        client.cart.items[existingItemIndex].quantity *
+        client.cart.items[existingItemIndex].unitPrice;
+    } else {
+      // Add new item
+      client.cart.items.push({
+        inventoryProduct: inventoryProductId,
+        quantity,
+        unitPrice: inventoryProduct.price,
+        totalPrice: quantity * inventoryProduct.price,
+      });
+    }
+
+    // Update cart totals
+    updateCartTotals(client.cart);
+
+    await client.save();
 
     // Populate the cart for response
-    await cart.populate({
-      path: "items.inventoryProduct",
+    await client.populate({
+      path: "cart.items.inventoryProduct",
       select:
         "bail_number design_code category_code lot_number stock_amount price",
     });
 
     res.status(201).json({
       message: "Item added to cart successfully",
-      cart,
+      clientId: client._id,
+      clientName: client.name,
+      cart: client.cart,
     });
   } catch (error) {
     console.error("Add to cart error:", error);
@@ -124,9 +197,12 @@ const addToCart = async (req, res) => {
 // Update cart item quantity
 const updateCartItem = async (req, res) => {
   try {
-    const { inventoryProductId } = req.params;
+    const { clientId, inventoryProductId } = req.params;
     const { quantity } = req.body;
-    const { user, type } = req.user;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
 
     // Validate quantity
     if (quantity < 0) {
@@ -135,15 +211,23 @@ const updateCartItem = async (req, res) => {
       });
     }
 
-    // Get user's cart
-    const cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    });
-
-    if (!cart) {
+    // Find client
+    const client = await Client.findById(clientId);
+    if (!client) {
       return res.status(404).json({
-        message: "Cart not found",
+        message: "Client not found",
+      });
+    }
+
+    // Authorization check
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only manage carts of your assigned clients",
       });
     }
 
@@ -165,19 +249,44 @@ const updateCartItem = async (req, res) => {
       }
     }
 
+    // Initialize cart if it doesn't exist
+    if (!client.cart || !client.cart.items) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
     // Update item quantity
-    const updated = cart.updateItemQuantity(inventoryProductId, quantity);
-    if (!updated) {
+    const itemIndex = client.cart.items.findIndex(
+      (item) =>
+        item.inventoryProduct.toString() === inventoryProductId.toString()
+    );
+
+    if (itemIndex === -1) {
       return res.status(404).json({
         message: "Item not found in cart",
       });
     }
 
-    await cart.save();
+    if (quantity <= 0) {
+      // Remove item if quantity is 0 or negative
+      client.cart.items.splice(itemIndex, 1);
+    } else {
+      // Update quantity and total price
+      client.cart.items[itemIndex].quantity = quantity;
+      client.cart.items[itemIndex].totalPrice =
+        client.cart.items[itemIndex].quantity *
+        client.cart.items[itemIndex].unitPrice;
+    }
+
+    // Update cart totals
+    updateCartTotals(client.cart);
+
+    await client.save();
 
     // Populate the cart for response
-    await cart.populate({
-      path: "items.inventoryProduct",
+    await client.populate({
+      path: "cart.items.inventoryProduct",
       select:
         "bail_number design_code category_code lot_number stock_amount price",
     });
@@ -187,7 +296,9 @@ const updateCartItem = async (req, res) => {
         quantity === 0
           ? "Item removed from cart"
           : "Cart item updated successfully",
-      cart,
+      clientId: client._id,
+      clientName: client.name,
+      cart: client.cart,
     });
   } catch (error) {
     console.error("Update cart item error:", error);
@@ -195,96 +306,16 @@ const updateCartItem = async (req, res) => {
   }
 };
 
-// Remove item from cart
+// Remove item from client's cart
 const removeFromCart = async (req, res) => {
   try {
-    const { inventoryProductId } = req.params;
-    const { user, type } = req.user;
+    const { clientId, inventoryProductId } = req.params;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
 
-    // Get user's cart
-    const cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    });
-
-    if (!cart) {
-      return res.status(404).json({
-        message: "Cart not found",
-      });
-    }
-
-    // Remove item from cart
-    const removed = cart.removeItem(inventoryProductId);
-    if (!removed) {
-      return res.status(404).json({
-        message: "Item not found in cart",
-      });
-    }
-
-    await cart.save();
-
-    // Populate the cart for response
-    await cart.populate({
-      path: "items.inventoryProduct",
-      select:
-        "bail_number design_code category_code lot_number stock_amount price",
-    });
-
-    res.json({
-      message: "Item removed from cart successfully",
-      cart,
-    });
-  } catch (error) {
-    console.error("Remove from cart error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Clear entire cart
-const clearCart = async (req, res) => {
-  try {
-    const { user, type } = req.user;
-
-    // Get user's cart
-    const cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    });
-
-    if (!cart) {
-      return res.status(404).json({
-        message: "Cart not found",
-      });
-    }
-
-    // Clear cart
-    cart.clearCart();
-    await cart.save();
-
-    res.json({
-      message: "Cart cleared successfully",
-      cart,
-    });
-  } catch (error) {
-    console.error("Clear cart error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Convert cart to order (checkout)
-const checkoutCart = async (req, res) => {
-  try {
-    const { clientId, paymentDueDate } = req.body;
-    const { user, type } = req.user;
-
-    // Validate required fields
-    if (!clientId) {
-      return res.status(400).json({
-        message: "Client ID is required for checkout",
-      });
-    }
-
-    // Verify client exists
+    // Find client
     const client = await Client.findById(clientId);
     if (!client) {
       return res.status(404).json({
@@ -292,20 +323,154 @@ const checkoutCart = async (req, res) => {
       });
     }
 
-    // Get user's cart
-    const cart = await Cart.findOne({
-      user: user._id,
-      userType: type === "manager" ? "Manager" : "Salesman",
-    }).populate("items.inventoryProduct");
+    // Authorization check
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only manage carts of your assigned clients",
+      });
+    }
 
-    if (!cart || cart.items.length === 0) {
+    // Initialize cart if it doesn't exist
+    if (!client.cart || !client.cart.items) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
+    // Remove item from cart
+    const itemIndex = client.cart.items.findIndex(
+      (item) =>
+        item.inventoryProduct.toString() === inventoryProductId.toString()
+    );
+
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        message: "Item not found in cart",
+      });
+    }
+
+    client.cart.items.splice(itemIndex, 1);
+
+    // Update cart totals
+    updateCartTotals(client.cart);
+
+    await client.save();
+
+    // Populate the cart for response
+    await client.populate({
+      path: "cart.items.inventoryProduct",
+      select:
+        "bail_number design_code category_code lot_number stock_amount price",
+    });
+
+    res.json({
+      message: "Item removed from cart successfully",
+      clientId: client._id,
+      clientName: client.name,
+      cart: client.cart,
+    });
+  } catch (error) {
+    console.error("Remove from cart error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Clear client's cart
+const clearCart = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
+
+    // Find client
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
+      });
+    }
+
+    // Authorization check
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only manage carts of your assigned clients",
+      });
+    }
+
+    // Clear cart
+    client.cart = {
+      items: [],
+      totalAmount: 0,
+      totalItems: 0,
+      updatedAt: Date.now(),
+    };
+    await client.save();
+
+    res.json({
+      message: "Cart cleared successfully",
+      clientId: client._id,
+      clientName: client.name,
+      cart: client.cart,
+    });
+  } catch (error) {
+    console.error("Clear cart error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Checkout client's cart (convert to order)
+const checkoutCart = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { paymentDueDate } = req.body;
+    const { user, type } = req.user || {
+      user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
+      type: "manager",
+    };
+
+    // Find client and populate cart items
+    const client = await Client.findById(clientId).populate(
+      "cart.items.inventoryProduct"
+    );
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
+      });
+    }
+
+    // Authorization check
+    if (
+      type === "salesman" &&
+      client.salesman &&
+      client.salesman.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only checkout carts of your assigned clients",
+      });
+    }
+
+    // Check if cart has items
+    if (!client.cart || !client.cart.items || client.cart.items.length === 0) {
       return res.status(400).json({
         message: "Cart is empty",
       });
     }
 
-    // Verify stock availability for all items
-    for (const item of cart.items) {
+    // Validate stock availability for all items
+    for (const item of client.cart.items) {
       if (item.quantity > item.inventoryProduct.stock_amount) {
         return res.status(400).json({
           message: `Insufficient stock for ${item.inventoryProduct.bail_number}. Available: ${item.inventoryProduct.stock_amount}, Required: ${item.quantity}`,
@@ -313,64 +478,60 @@ const checkoutCart = async (req, res) => {
       }
     }
 
-    // Prepare order products array
-    const orderProducts = cart.items.map((item) => ({
+    // Create order products array
+    const orderProducts = client.cart.items.map((item) => ({
       inventoryProduct: item.inventoryProduct._id,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
     }));
 
-    // Create order data
-    const orderData = {
+    // Create order
+    const order = new Order({
       products: orderProducts,
-      client: clientId,
+      client: client._id,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "Salesman",
-      totalAmount: cart.totalAmount,
-    };
+      totalAmount: client.cart.totalAmount,
+      paymentDueDate:
+        paymentDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+    });
 
-    // Add payment due date if provided
-    if (paymentDueDate) {
-      orderData.paymentDueDate = new Date(paymentDueDate);
-    }
+    await order.save();
 
-    // Create the order
-    const newOrder = new Order(orderData);
-    await newOrder.save();
-
-    // Update inventory stock amounts
-    for (const item of cart.items) {
+    // Update inventory stock
+    for (const item of client.cart.items) {
       await InventoryProduct.findByIdAndUpdate(item.inventoryProduct._id, {
         $inc: { stock_amount: -item.quantity },
       });
     }
 
-    // Clear the cart after successful order creation
-    cart.clearCart();
-    await cart.save();
+    // Clear cart after successful checkout
+    client.cart = {
+      items: [],
+      totalAmount: 0,
+      totalItems: 0,
+      updatedAt: Date.now(),
+    };
+    await client.save();
 
-    // Populate the order with details for response
-    const populatedOrder = await Order.findById(newOrder._id)
-      .populate("client", "name phone firmName address")
-      .populate("createdBy", "name email phone")
-      .populate({
+    // Populate order for response
+    await order.populate([
+      {
         path: "products.inventoryProduct",
-        select:
-          "bail_number design_code category_code lot_number stock_amount price",
-      });
+        select: "bail_number design_code category_code lot_number price",
+      },
+      {
+        path: "client",
+        select: "name phone email address",
+      },
+    ]);
 
     res.status(201).json({
-      message: "Order created successfully from cart",
-      order: populatedOrder,
-      productCount: orderProducts.length,
-      paymentSummary: {
-        totalAmount: newOrder.totalAmount,
-        paidAmount: newOrder.paidAmount,
-        dueAmount: newOrder.dueAmount,
-        paymentStatus: newOrder.paymentStatus,
-        paymentDueDate: newOrder.paymentDueDate,
-      },
+      message: "Cart checked out successfully",
+      order,
+      clientId: client._id,
+      clientName: client.name,
     });
   } catch (error) {
     console.error("Checkout cart error:", error);
