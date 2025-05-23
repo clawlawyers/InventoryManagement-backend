@@ -109,4 +109,4 @@ const ClientSchema = new Schema({
 
 // Note: Cart methods are now handled in the controller
 
-module.exports = mongoose.model("ClientTextile", ClientSchema);
+module.exports = mongoose.model("Client", ClientSchema);
