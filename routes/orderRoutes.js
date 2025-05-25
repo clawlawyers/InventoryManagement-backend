@@ -4,6 +4,7 @@ const {
   createOrder,
   getAllOrders,
   getOrderById,
+  getAllOrdersByClientId,
 } = require("../controllers/orderController");
 const { requireAuth } = require("../middleware/requireAuth");
 
@@ -13,6 +14,7 @@ router.post("/test/create-multiple", createOrder); // Test route for multiple pr
 router.post("/create", requireAuth, createOrder); // Main route (supports both single and multiple)
 router.post("/create-multiple", requireAuth, createOrder); // Explicit multiple products route
 router.get("/", requireAuth, getAllOrders);
+router.get("/:clientId", requireAuth, getAllOrdersByClientId);
 router.get("/:id", requireAuth, getOrderById);
 
 module.exports = router;

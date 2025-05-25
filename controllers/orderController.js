@@ -223,6 +223,54 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+// Get all orders (for future use)
+const getAllOrdersByClientId = async (req, res) => {
+  try {
+    const { user, type } = req.user;
+    const { clientId } = req.params;
+
+    let orders;
+    if (type === "manager") {
+      // Managers can see all orders
+      orders = await Order.find({ client: clientId })
+        .populate("client", "name phone firmName address")
+        .populate("createdBy", "name email phone")
+        .populate({
+          path: "products.inventoryProduct",
+          select:
+            "bail_number design_code category_code lot_number stock_amount price",
+        })
+        .sort({ createdAt: -1 });
+    } else if (type === "salesman") {
+      // Salesmen can only see orders they created
+      orders = await Order.find({ createdBy: user._id, client: clientId })
+        .populate("client", "name phone firmName address")
+        .populate("createdBy", "name email phone")
+        .populate({
+          path: "products.inventoryProduct",
+          select:
+            "bail_number design_code category_code lot_number stock_amount price",
+        })
+        .sort({ createdAt: -1 });
+    } else {
+      return res.status(403).json({
+        message: "Unauthorized: Only managers and salesmen can view orders",
+      });
+    }
+
+    res.json({
+      message: "Orders retrieved successfully",
+      orders,
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 // Get order by ID (for future use)
 const getOrderById = async (req, res) => {
   try {
@@ -269,4 +317,5 @@ module.exports = {
   createOrder,
   getAllOrders,
   getOrderById,
+  getAllOrdersByClientId,
 };

@@ -19,7 +19,16 @@ const PaymentSchema = new Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "bank_transfer", "cheque", "upi", "card", "other"],
+    enum: [
+      "Cash",
+      "Bank_transfer",
+      "Cheque",
+      "UPI",
+      "Card",
+      "other",
+      "Advance",
+      "RTGS/NEFT",
+    ],
     default: "cash",
   },
   paymentReference: {

@@ -53,12 +53,14 @@ const createPayment = async (req, res) => {
     if (type === "salesman") {
       // Check if the order was created by this salesman or if the client is assigned to them
       const isOrderCreator = order.createdBy.toString() === user._id.toString();
-      const isClientAssigned = order.client.salesman && 
+      const isClientAssigned =
+        order.client.salesman &&
         order.client.salesman.toString() === user._id.toString();
-      
+
       if (!isOrderCreator && !isClientAssigned) {
         return res.status(403).json({
-          message: "Forbidden: You can only record payments for your orders or clients",
+          message:
+            "Forbidden: You can only record payments for your orders or clients",
         });
       }
     }
@@ -88,11 +90,20 @@ const createPayment = async (req, res) => {
     // Update order payment information
     order.paidAmount += amount;
     order.payments.push(newPayment._id);
+
+    // Check if the order is fully paid and update status to completed
+    if (order.paidAmount >= order.totalAmount) {
+      order.status = "completed";
+    }
+
     await order.save(); // This will trigger the pre-save hook to update payment status
 
     // Populate the payment with related information for response
     const populatedPayment = await Payment.findById(newPayment._id)
-      .populate("order", "totalAmount paidAmount dueAmount paymentStatus")
+      .populate(
+        "order",
+        "totalAmount paidAmount dueAmount paymentStatus status"
+      )
       .populate("client", "name phone firmName")
       .populate("receivedBy", "name email phone");
 
@@ -104,6 +115,7 @@ const createPayment = async (req, res) => {
         paidAmount: order.paidAmount,
         dueAmount: order.dueAmount,
         paymentStatus: order.paymentStatus,
+        status: order.status,
       },
     });
   } catch (error) {
@@ -130,12 +142,14 @@ const getPaymentsByOrder = async (req, res) => {
     // For salesmen, verify they can view payments for this order
     if (type === "salesman") {
       const isOrderCreator = order.createdBy.toString() === user._id.toString();
-      const isClientAssigned = order.client.salesman && 
+      const isClientAssigned =
+        order.client.salesman &&
         order.client.salesman.toString() === user._id.toString();
-      
+
       if (!isOrderCreator && !isClientAssigned) {
         return res.status(403).json({
-          message: "Forbidden: You can only view payments for your orders or clients",
+          message:
+            "Forbidden: You can only view payments for your orders or clients",
         });
       }
     }
@@ -219,7 +233,10 @@ const getPaymentById = async (req, res) => {
     }
 
     // Check authorization
-    if (type === "salesman" && payment.receivedBy._id.toString() !== user._id.toString()) {
+    if (
+      type === "salesman" &&
+      payment.receivedBy._id.toString() !== user._id.toString()
+    ) {
       return res.status(403).json({
         message: "Forbidden: You can only view payments you received",
       });
