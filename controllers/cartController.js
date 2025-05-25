@@ -434,16 +434,14 @@ const clearCart = async (req, res) => {
 const checkoutCart = async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { paymentDueDate } = req.body;
+    const { paymentDueDate, cartItems } = req.body;
     const { user, type } = req.user || {
       user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
       type: "manager",
     };
 
-    // Find client and populate cart items
-    const client = await Client.findById(clientId).populate(
-      "cart.items.inventoryProduct"
-    );
+    // Find client
+    const client = await Client.findById(clientId);
     if (!client) {
       return res.status(404).json({
         message: "Client not found",
@@ -462,29 +460,61 @@ const checkoutCart = async (req, res) => {
       });
     }
 
-    // Check if cart has items
-    if (!client.cart || !client.cart.items || client.cart.items.length === 0) {
+    // Check if cart items were provided
+    if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({
-        message: "Cart is empty",
+        message: "Cart items are required and cannot be empty",
       });
     }
 
-    // Validate stock availability for all items
-    for (const item of client.cart.items) {
-      if (item.quantity > item.inventoryProduct.stock_amount) {
+    // Calculate total amount
+    let totalAmount = 0;
+    const orderProducts = [];
+
+    // Process each cart item
+    for (const item of cartItems) {
+      // Validate required fields
+      if (
+        !item.inventoryProduct ||
+        !item.inventoryProduct._id ||
+        !item.quantity
+      ) {
         return res.status(400).json({
-          message: `Insufficient stock for ${item.inventoryProduct.bail_number}. Available: ${item.inventoryProduct.stock_amount}, Required: ${item.quantity}`,
+          message: "Each cart item must have inventoryProduct._id and quantity",
         });
       }
-    }
 
-    // Create order products array
-    const orderProducts = client.cart.items.map((item) => ({
-      inventoryProduct: item.inventoryProduct._id,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      totalPrice: item.totalPrice,
-    }));
+      // Get inventory product from database to verify stock
+      const inventoryProduct = await InventoryProduct.findById(
+        item.inventoryProduct._id
+      );
+      if (!inventoryProduct) {
+        return res.status(404).json({
+          message: `Inventory product not found: ${item.inventoryProduct._id}`,
+        });
+      }
+
+      // Check stock availability
+      if (item.quantity > inventoryProduct.stock_amount) {
+        return res.status(400).json({
+          message: `Insufficient stock for ${inventoryProduct.bail_number}. Available: ${inventoryProduct.stock_amount}, Required: ${item.quantity}`,
+        });
+      }
+
+      // Use provided unit price or get from inventory product
+      const unitPrice = item.unitPrice || inventoryProduct.price || 0;
+      const totalPrice = unitPrice * item.quantity;
+
+      // Add to order products
+      orderProducts.push({
+        inventoryProduct: inventoryProduct._id,
+        quantity: item.quantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+      });
+
+      totalAmount += totalPrice;
+    }
 
     // Create order
     const order = new Order({
@@ -492,7 +522,7 @@ const checkoutCart = async (req, res) => {
       client: client._id,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "Salesman",
-      totalAmount: client.cart.totalAmount,
+      totalAmount: totalAmount,
       paymentDueDate:
         paymentDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
     });
@@ -500,20 +530,11 @@ const checkoutCart = async (req, res) => {
     await order.save();
 
     // Update inventory stock
-    for (const item of client.cart.items) {
+    for (const item of cartItems) {
       await InventoryProduct.findByIdAndUpdate(item.inventoryProduct._id, {
         $inc: { stock_amount: -item.quantity },
       });
     }
-
-    // Clear cart after successful checkout
-    client.cart = {
-      items: [],
-      totalAmount: 0,
-      totalItems: 0,
-      updatedAt: Date.now(),
-    };
-    await client.save();
 
     // Populate order for response
     await order.populate([
@@ -526,6 +547,13 @@ const checkoutCart = async (req, res) => {
         select: "name phone email address",
       },
     ]);
+    client.cart = {
+      items: [],
+      totalAmount: 0,
+      totalItems: 0,
+      updatedAt: Date.now(),
+    };
+    await client.save();
 
     res.status(201).json({
       message: "Cart checked out successfully",

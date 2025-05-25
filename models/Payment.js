@@ -4,12 +4,12 @@ const Schema = mongoose.Schema;
 const PaymentSchema = new Schema({
   order: {
     type: Schema.Types.ObjectId,
-    ref: "Order",
+    ref: "OrderTextile",
     required: true,
   },
   client: {
     type: Schema.Types.ObjectId,
-    ref: "Client",
+    ref: "ClientTextile",
     required: true,
   },
   amount: {

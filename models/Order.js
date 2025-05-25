@@ -55,7 +55,7 @@ const OrderSchema = new Schema({
   },
   client: {
     type: Schema.Types.ObjectId,
-    ref: "Client",
+    ref: "ClientTextile",
     required: true,
   },
   createdBy: {
@@ -160,4 +160,4 @@ OrderSchema.methods.calculateTotalAmount = function () {
   return total;
 };
 
-module.exports = mongoose.model("Order", OrderSchema);
+module.exports = mongoose.model("OrderTextile", OrderSchema);
