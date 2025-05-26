@@ -94,8 +94,11 @@ const createSalesman = async (req, res) => {
 
     // Create default permissions
     const permission = new Permission({
-      add: false,
-      delete: false,
+      deleteClient: false,
+      addClient: false,
+      generateInvoice: false,
+      viewInventory: true,
+      editInventory: false,
       description: "Default permissions",
     });
 
@@ -136,6 +139,7 @@ const createSalesman = async (req, res) => {
       },
     });
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: err.message });
   }
 };
