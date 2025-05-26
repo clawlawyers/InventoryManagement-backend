@@ -4,6 +4,8 @@ const {
   createSalesman,
   getAllSalesmen,
   getSalesmenByManager,
+  updatePermissions,
+  getPermissions,
 } = require("../controllers/salesmanController");
 
 const {
@@ -15,6 +17,10 @@ const {
 router.post("/", createSalesman);
 router.get("/", getAllSalesmen);
 router.get("/manager/:managerId", getSalesmenByManager);
+
+router.put("/:salesmanId/updatePermissions", updatePermissions);
+
+router.get("/:salesmanId/getPermissions", getPermissions);
 
 // Client routes (related to salesmen)
 router.post("/:salesmanId/clients", createClient);

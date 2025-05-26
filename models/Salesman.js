@@ -11,6 +11,10 @@ const SalesmanSchema = new Schema({
     type: String,
     required: true,
   },
+  email: {
+    type: String,
+    required: true,
+  },
   phone: {
     type: String,
     required: true,
@@ -24,7 +28,7 @@ const SalesmanSchema = new Schema({
   permissions: {
     type: Schema.Types.ObjectId,
     ref: "Permission",
-    required: true,
+    // required: true,
   },
   password: {
     type: String,
@@ -37,4 +41,4 @@ const SalesmanSchema = new Schema({
   },
 });
 
-module.exports = mongoose.model("Salesman", SalesmanSchema);
+module.exports = mongoose.model("SalesmanTextile", SalesmanSchema);

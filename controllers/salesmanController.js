@@ -2,6 +2,7 @@ const Salesman = require("../models/Salesman");
 const Permission = require("../models/permissions");
 const Manager = require("../models/Manager");
 const crypto = require("crypto");
+const permissions = require("../models/permissions");
 
 // Generate a random user ID with prefix SM followed by 4 digits
 const generateUserId = async () => {
@@ -28,12 +29,46 @@ const generatePassword = () => {
   return crypto.randomBytes(4).toString("hex");
 };
 
+const updatePermissions = async (req, res) => {
+  try {
+    const { salesmanId } = req.params;
+    const { permissions } = req.body;
+
+    // Find the salesman
+    const salesman = await Salesman.findById(salesmanId);
+    if (!salesman) {
+      return res.status(404).json({ message: "Salesman not found" });
+    }
+
+    // Update the permissions
+    await Permission.findByIdAndUpdate(salesman.permissions, permissions);
+
+    res.json({ message: "Permissions updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getPermissions = async (req, res) => {
+  try {
+    const { salesmanId } = req.params;
+
+    const SelsPremissions = await permissions.findOne({ salesman: salesmanId });
+
+    res.json(SelsPremissions);
+  } catch (error) {
+    console.error("Error fetching permissions:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Create a new salesman
 const createSalesman = async (req, res) => {
   try {
-    const { name, phone, managerId } = req.body;
+    console.log(req.body);
+    const { name, email, phone, managerId } = req.body;
 
-    if (!name || !phone || !managerId) {
+    if (!name || !phone || !managerId || !email) {
       return res.status(400).json({
         message: "Name, phone number, and manager ID are required",
       });
@@ -68,6 +103,7 @@ const createSalesman = async (req, res) => {
 
     // Create the salesman
     const salesman = new Salesman({
+      email,
       user_id,
       name,
       phone,
@@ -138,4 +174,6 @@ module.exports = {
   createSalesman,
   getAllSalesmen,
   getSalesmenByManager,
+  updatePermissions,
+  getPermissions,
 };

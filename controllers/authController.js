@@ -2,6 +2,103 @@ const Manager = require("../models/Manager");
 const Salesman = require("../models/Salesman");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const sendEmail = require("../utils/nodemailer");
+
+const accountCreatationRequest = async (req, res) => {
+  try {
+    const { name, email, phoneNumber, GSTNumber, organisationName } = req.body;
+
+    if (!name || !email || !phoneNumber || !GSTNumber || !organisationName) {
+      return res.status(400).json({
+        message:
+          "Name, email, phoneNumber ,GSTNumber and organisationName are required",
+      });
+    }
+
+    // Check if email is already in use
+    const existingManager = await Manager.findOne({ email });
+    if (existingManager) {
+      return res.status(400).json({ message: "Email is already registered" });
+    }
+
+    // Send email
+    const htmlTemplate = `
+      <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Account Creation Request</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f6f8fa;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      background-color: #ffffff;
+      margin: 0 auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .info {
+      margin-bottom: 10px;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+    }
+    .value {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>New Account Creation Request</h2>
+    <div class="info">
+      <span class="label">Name:</span>
+      <span class="value">${name}</span>
+    </div>
+    <div class="info">
+      <span class="label">Email:</span>
+      <span class="value">${email}</span>
+    </div>
+    <div class="info">
+      <span class="label">Phone Number:</span>
+      <span class="value">${phoneNumber}</span>
+    </div>
+    <div class="info">
+      <span class="label">GST Number:</span>
+      <span class="value">${GSTNumber}</span>
+    </div>
+    <div class="info">
+      <span class="label">Organisation Name:</span>
+      <span class="value">${organisationName}</span>
+    </div>
+  </div>
+</body>
+</html>
+`;
+    await sendEmail({
+      to: "claw.lawyers@gmail.com",
+      subject: "Account Creation Request",
+      htmlTemplate,
+    });
+
+    res.status(200).json({
+      message: "Account creation request sent successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // Manager login
 const managerLogin = async (req, res) => {
@@ -24,7 +121,7 @@ const managerLogin = async (req, res) => {
     const token = jwt.sign(
       { id: manager._id, type: "manager" },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "365d" }
     );
 
     res.json({
@@ -62,7 +159,7 @@ const salesmanLogin = async (req, res) => {
     const token = jwt.sign(
       { id: salesman._id, type: "salesman" },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "365d" }
     );
 
     res.json({
@@ -77,9 +174,17 @@ const salesmanLogin = async (req, res) => {
 // Manager signup
 const managerSignup = async (req, res) => {
   try {
-    const { name, email, password, phoneNumber, GSTNumber } = req.body;
+    const { name, email, password, phoneNumber, GSTNumber, organisationName } =
+      req.body;
 
-    if (!name || !email || !password || !phoneNumber || !GSTNumber) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !phoneNumber ||
+      !GSTNumber ||
+      !organisationName
+    ) {
       return res.status(400).json({
         message:
           "Name, email, phoneNumber ,GSTNumber and password are required",
@@ -101,6 +206,7 @@ const managerSignup = async (req, res) => {
       GSTNumber,
       companies: [],
       salesmen: [],
+      organisationName,
     });
 
     await manager.save();
@@ -179,4 +285,5 @@ module.exports = {
   salesmanLogin,
   managerSignup,
   getVerify,
+  accountCreatationRequest,
 };

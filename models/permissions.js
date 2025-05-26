@@ -2,13 +2,30 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const PermissionSchema = new Schema({
-  delete: {
+  deleteClient: {
     type: Boolean,
     required: false,
+    default: false,
   },
-  add: {
+  addClient: {
     type: Boolean,
     required: false,
+    default: false,
+  },
+  generateInvoice: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  viewInventory: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  editInventory: {
+    type: Boolean,
+    required: false,
+    default: false,
   },
   description: {
     type: String,

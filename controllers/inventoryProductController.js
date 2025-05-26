@@ -1,3 +1,4 @@
+const { create } = require("../models/Client");
 const Inventory = require("../models/Inventory");
 const InventoryProduct = require("../models/InventoryProduct");
 const mongoose = require("mongoose");
@@ -67,9 +68,10 @@ const getInventoryProducts = async (req, res) => {
     const { inventoryId } = req.params;
 
     // Check if inventory exists
-    const inventory = await Inventory.findById(inventoryId).populate(
-      "products"
-    );
+    const inventory = await Inventory.findById(inventoryId).populate({
+      path: "products",
+      options: { sort: { createdAt: -1 } },
+    });
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
     }

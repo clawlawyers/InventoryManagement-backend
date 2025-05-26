@@ -23,6 +23,10 @@ const ManagerSchema = new Schema({
     type: String,
     required: true,
   },
+  organisationName: {
+    type: String,
+    required: true,
+  },
   companies: [
     {
       type: Schema.Types.ObjectId,
