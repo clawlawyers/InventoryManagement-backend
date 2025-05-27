@@ -30,7 +30,7 @@ const createSalesman = async (req, res) => {
 };
 const getCompaniesByManager = async (req, res) => {
   try {
-    const managerId = req.query.managerId;
+    const managerId = req.params.id;
     const manager = await Manager.findById(managerId).populate("companies");
 
     if (!manager) {
@@ -58,10 +58,24 @@ const getManagerById = async (req, res) => {
   }
 };
 
+const editManagerDetails = async (req, res) => {
+  try {
+    const updatedData = req.body;
+    const managerId = req.params.id;
+    const manager = await Manager.findByIdAndUpdate(managerId, updatedData, {
+      new: true,
+    });
+    res.json(manager);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Make sure it's included in the exports
 module.exports = {
   getAllManagers,
   getCompaniesByManager,
   createManager,
   getManagerById,
+  editManagerDetails,
 };

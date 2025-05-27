@@ -162,6 +162,10 @@ const getSalesmenByManager = async (req, res) => {
     const manager = await Manager.findById(managerId).populate({
       path: "salesmen",
       select: "-password", // Exclude password from results
+      populate: {
+        path: "permissions",
+        model: "Permission",
+      },
     });
 
     if (!manager) {
@@ -170,7 +174,36 @@ const getSalesmenByManager = async (req, res) => {
 
     res.json(manager.salesmen);
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+const deleteSalesman = async (req, res) => {
+  try {
+    const salesmanId = req.params.salesmanId;
+
+    // Find the salesman first to get related data
+    const salesman = await Salesman.findById(salesmanId);
+    if (!salesman) {
+      return res.status(404).json({ message: "Salesman not found" });
+    }
+
+    // Remove salesman from manager's salesmen array
+    await Manager.findByIdAndUpdate(salesman.manager, {
+      $pull: { salesmen: salesmanId },
+    });
+
+    // Delete associated permissions
+    await Permission.findByIdAndDelete(salesman.permissions);
+
+    // Delete the salesman
+    await Salesman.findByIdAndDelete(salesmanId);
+
+    res.json({ message: "Salesman deleted successfully", salesman });
+  } catch (error) {
+    console.error("Error deleting salesman:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -180,4 +213,5 @@ module.exports = {
   getSalesmenByManager,
   updatePermissions,
   getPermissions,
+  deleteSalesman,
 };

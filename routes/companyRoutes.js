@@ -4,6 +4,7 @@ const {
   getInventoryByCompanyId,
   getCompanyById,
   createCompany,
+  deleteCompany,
 } = require("../controllers/companyController");
 const {
   uploadInventoryExcel,
@@ -18,6 +19,8 @@ const Company = require("../models/Company");
 router.post("/create", requireAuth, createCompany);
 router.get("/:id/inventory", getInventoryByCompanyId);
 router.get("/:id", getCompanyById);
+
+router.delete("/:id", requireAuth, deleteCompany);
 
 // Middleware to log route params
 const logParams = (req, res, next) => {

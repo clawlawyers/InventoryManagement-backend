@@ -36,7 +36,7 @@ const ManagerSchema = new Schema({
   salesmen: [
     {
       type: Schema.Types.ObjectId,
-      ref: "Salesman",
+      ref: "SalesmanTextile",
     },
   ],
 });

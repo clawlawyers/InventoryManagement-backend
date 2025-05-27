@@ -132,6 +132,7 @@ const managerLogin = async (req, res) => {
         type: "manager",
         email: manager.email,
         companies: manager.companies,
+        organizationName: manager.organisationName,
       },
     });
   } catch (err) {
@@ -261,6 +262,7 @@ const getVerify = async (req, res) => {
           type: "manager",
           email: manager.email,
           companies: manager.companies,
+          organizationName: manager.organisationName,
         },
       });
     } else if (decoded.type === "salesman") {
