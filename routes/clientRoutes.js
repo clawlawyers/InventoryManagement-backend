@@ -6,6 +6,7 @@ const {
   updateClient,
   deleteClient,
   createClientByManagerOrSalesman,
+  getClientsBySalesman,
 } = require("../controllers/clientController");
 const { requireAuth } = require("../middleware/requireAuth");
 
@@ -16,5 +17,7 @@ router.get("/", getAllClients);
 router.get("/:id", getClientById);
 router.put("/:id", updateClient);
 router.delete("/:id", deleteClient);
+
+router.get("/SalesmanClients/:salesmanId", getClientsBySalesman);
 
 module.exports = router;

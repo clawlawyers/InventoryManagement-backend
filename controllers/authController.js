@@ -151,7 +151,14 @@ const salesmanLogin = async (req, res) => {
         .json({ message: "User ID and password are required" });
     }
 
-    const salesman = await Salesman.findOne({ user_id });
+    const salesman = await Salesman.findOne({ user_id })
+      .populate("permissions")
+      .populate({
+        path: "manager",
+        populate: {
+          path: "companies",
+        },
+      });
 
     if (!salesman || salesman.password !== password) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -163,9 +170,19 @@ const salesmanLogin = async (req, res) => {
       { expiresIn: "365d" }
     );
 
+    const organisationName = salesman.manager.organisationName;
+
     res.json({
       token,
-      user: { id: salesman._id, name: salesman.name, type: "salesman" },
+      user: {
+        id: salesman._id,
+        name: salesman.name,
+        type: "salesman",
+        email: salesman.email,
+        permissions: salesman.permissions,
+        organisationName,
+        companies: salesman.manager.companies,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -282,10 +299,59 @@ const getVerify = async (req, res) => {
   }
 };
 
+const getVerifyUser = async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded);
+    if (decoded.type === "salesman") {
+      const salesman = await Salesman.findById(decoded.id)
+        .populate("permissions")
+        .populate({
+          path: "manager",
+          populate: {
+            path: "companies",
+          },
+        });
+      if (!salesman) {
+        return res.status(401).json({ message: "Token is invalid" });
+      }
+      const organisationName = salesman.manager.organisationName;
+
+      res.json({
+        token,
+        user: {
+          id: salesman._id,
+          name: salesman.name,
+          type: "salesman",
+          email: salesman.email,
+          permissions: salesman.permissions,
+          organisationName,
+          companies: salesman.manager.companies,
+        },
+      });
+    } else if (decoded.type === "manager") {
+      const salesman = await Salesman.findById(decoded.id);
+      if (!salesman) {
+        return res.status(401).json({ message: "Token is invalid" });
+      }
+      res.json({
+        token,
+        user: { id: salesman._id, name: salesman.name, type: "salesman" },
+      });
+    } else {
+      res.status(401).json({ message: "Token is invalid" });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(401).json({ message: "Token is invalid" });
+  }
+};
 module.exports = {
   managerLogin,
   salesmanLogin,
   managerSignup,
   getVerify,
   accountCreatationRequest,
+  getVerifyUser,
 };

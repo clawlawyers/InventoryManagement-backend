@@ -183,14 +183,32 @@ const getAllOrders = async (req, res) => {
 
     let orders;
     if (type === "manager") {
-      // Managers can see all orders
-      orders = await Order.find()
+      // Managers can see only orders from their organization
+      // Get all salesmen under this manager
+      const salesmenIds = user.salesmen || [];
+
+      // Find orders created by the manager or by salesmen under this manager
+      orders = await Order.find({
+        $or: [
+          { createdBy: user._id, creatorType: "Manager" },
+          { createdBy: { $in: salesmenIds }, creatorType: "Salesman" },
+        ],
+      })
         .populate("client", "name phone firmName address")
         .populate("createdBy", "name email phone")
         .populate({
           path: "products.inventoryProduct",
           select:
             "bail_number design_code category_code lot_number stock_amount price",
+        })
+        .populate({
+          path: "payments",
+          select:
+            "amount paymentMethod paymentDate paymentReference notes status",
+          populate: {
+            path: "receivedBy",
+            select: "name email phone",
+          },
         })
         .sort({ createdAt: -1 });
     } else if (type === "salesman") {
@@ -202,6 +220,15 @@ const getAllOrders = async (req, res) => {
           path: "products.inventoryProduct",
           select:
             "bail_number design_code category_code lot_number stock_amount price",
+        })
+        .populate({
+          path: "payments",
+          select:
+            "amount paymentMethod paymentDate paymentReference notes status",
+          populate: {
+            path: "receivedBy",
+            select: "name email phone",
+          },
         })
         .sort({ createdAt: -1 });
     } else {
@@ -240,6 +267,15 @@ const getAllOrdersByClientId = async (req, res) => {
           select:
             "bail_number design_code category_code lot_number stock_amount price",
         })
+        .populate({
+          path: "payments",
+          select:
+            "amount paymentMethod paymentDate paymentReference notes status",
+          populate: {
+            path: "receivedBy",
+            select: "name email phone",
+          },
+        })
         .sort({ createdAt: -1 });
     } else if (type === "salesman") {
       // Salesmen can only see orders they created
@@ -250,6 +286,15 @@ const getAllOrdersByClientId = async (req, res) => {
           path: "products.inventoryProduct",
           select:
             "bail_number design_code category_code lot_number stock_amount price",
+        })
+        .populate({
+          path: "payments",
+          select:
+            "amount paymentMethod paymentDate paymentReference notes status",
+          populate: {
+            path: "receivedBy",
+            select: "name email phone",
+          },
         })
         .sort({ createdAt: -1 });
     } else {

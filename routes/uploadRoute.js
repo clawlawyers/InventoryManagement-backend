@@ -37,9 +37,9 @@ router.post(
   },
   async (req, res) => {
     try {
-      if (req.user.type !== "manager") {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      // if (req.user.type !== "manager") {
+      //   return res.status(401).json({ message: "Unauthorized" });
+      // }
 
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
@@ -110,9 +110,9 @@ router.post(
   },
   async (req, res) => {
     try {
-      if (req.user.type !== "manager") {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      // if (req.user.type !== "manager") {
+      //   return res.status(401).json({ message: "Unauthorized" });
+      // }
 
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });

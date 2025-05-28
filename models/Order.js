@@ -66,7 +66,7 @@ const OrderSchema = new Schema({
   creatorType: {
     type: String,
     required: true,
-    enum: ["Manager", "Salesman"],
+    enum: ["Manager", "SalesmanTextile"],
   },
   status: {
     type: String,

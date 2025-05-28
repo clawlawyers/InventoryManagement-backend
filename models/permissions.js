@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const PermissionSchema = new Schema({
+  addFirm: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
   deleteClient: {
     type: Boolean,
     required: false,
@@ -27,10 +32,26 @@ const PermissionSchema = new Schema({
     required: false,
     default: false,
   },
+  createOrder: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  addInvetory: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  editClient: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
   description: {
     type: String,
     required: false,
   },
+
   salesman: {
     type: Schema.Types.ObjectId,
     ref: "Salesman",

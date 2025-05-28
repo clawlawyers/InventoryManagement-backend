@@ -85,7 +85,7 @@ const ClientSchema = new Schema({
   },
   salesman: {
     type: Schema.Types.ObjectId,
-    ref: "Salesman",
+    ref: "SalesmanTextile",
     required: false,
   },
   // Embedded cart for this client

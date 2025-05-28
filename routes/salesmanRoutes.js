@@ -7,6 +7,8 @@ const {
   updatePermissions,
   getPermissions,
   deleteSalesman,
+  getSalesman,
+  updateSalesman,
 } = require("../controllers/salesmanController");
 
 const {
@@ -28,6 +30,8 @@ router.post("/:salesmanId/clients", createClient);
 router.get("/:salesmanId/clients", getClientsBySalesman);
 
 router.delete("/:salesmanId", deleteSalesman);
+router.get("/:salesmanId", getSalesman);
+router.patch("/:salesmanId", updateSalesman);
 // This route is now handled in companyRoutes.js
 // Removing to avoid route conflict
 

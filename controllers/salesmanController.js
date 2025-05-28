@@ -207,6 +207,39 @@ const deleteSalesman = async (req, res) => {
   }
 };
 
+const getSalesman = async (req, res) => {
+  try {
+    const salesman = await Salesman.findById(req.params.salesmanId);
+    if (!salesman) {
+      return res.status(404).json({ message: "Salesman not found" });
+    }
+    res.json(salesman);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const updateSalesman = async (req, res) => {
+  try {
+    const salesmanId = req.params.salesmanId;
+    const updateData = req.body;
+
+    const updatedSalesman = await Salesman.findByIdAndUpdate(
+      salesmanId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedSalesman) {
+      return res.status(404).json({ message: "Salesman not found" });
+    }
+
+    res.json(updatedSalesman);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createSalesman,
   getAllSalesmen,
@@ -214,4 +247,6 @@ module.exports = {
   updatePermissions,
   getPermissions,
   deleteSalesman,
+  getSalesman,
+  updateSalesman,
 };

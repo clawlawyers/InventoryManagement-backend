@@ -521,7 +521,7 @@ const checkoutCart = async (req, res) => {
       products: orderProducts,
       client: client._id,
       createdBy: user._id,
-      creatorType: type === "manager" ? "Manager" : "Salesman",
+      creatorType: type === "manager" ? "Manager" : "SalesmanTextile",
       totalAmount: totalAmount,
       paymentDueDate:
         paymentDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days

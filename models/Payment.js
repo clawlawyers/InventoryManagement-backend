@@ -52,7 +52,7 @@ const PaymentSchema = new Schema({
   receivedByType: {
     type: String,
     required: true,
-    enum: ["Manager", "Salesman"],
+    enum: ["Manager", "SalesmanTextile"],
   },
   status: {
     type: String,

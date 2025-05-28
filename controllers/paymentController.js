@@ -82,7 +82,7 @@ const createPayment = async (req, res) => {
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       notes,
       receivedBy: user._id,
-      receivedByType: type === "manager" ? "Manager" : "Salesman",
+      receivedByType: type === "manager" ? "Manager" : "SalesmanTextile",
     });
 
     await newPayment.save();
