@@ -97,9 +97,27 @@ router.post(
   }
 );
 
+const uploadImageToCloudinary = async (filePath) => {
+  try {
+    // Upload image to cloudinary
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "uploads",
+      resource_type: "image",
+    });
+
+    // Delete local file after upload
+    fs.unlinkSync(filePath);
+
+    return { success: true, url: result.secure_url };
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    return { success: false, error };
+  }
+};
+
 router.post(
   "/upload-image",
-  requireAuth,
+  // requireAuth,
   (req, res, next) => {
     upload.single("image")(req, res, (err) => {
       if (err) {
@@ -118,21 +136,16 @@ router.post(
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const filePath = req.file.path;
+      const uploadResult = await uploadImageToCloudinary(req.file.path);
 
-      // Upload image to cloudinary
-      const result = await cloudinary.uploader.upload(filePath, {
-        folder: "uploads",
-        resource_type: "image",
-      });
-
-      // Delete local file after upload
-      fs.unlinkSync(filePath);
+      if (!uploadResult.success) {
+        throw uploadResult.error;
+      }
 
       // Return only the image URL
       res.status(200).json({
         message: "Image uploaded successfully",
-        url: result.secure_url,
+        url: uploadResult.url,
       });
     } catch (err) {
       console.error("Upload error:", err);

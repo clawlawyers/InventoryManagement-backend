@@ -13,6 +13,7 @@ const uploadRoute = require("./uploadRoute");
 const orderRoutes = require("./orderRoutes");
 const cartRoutes = require("./cartRoutes");
 const paymentRoutes = require("./paymentRoutes");
+const imageGenerationRoutes = require("./imageGeneration");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -26,4 +27,6 @@ router.use("/upload", uploadRoute);
 router.use("/orders", orderRoutes);
 router.use("/cart", cartRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/genImg", imageGenerationRoutes);
+
 module.exports = router;
