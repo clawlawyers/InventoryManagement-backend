@@ -1,6 +1,8 @@
 const Payment = require("../models/Payment");
 const Order = require("../models/Order");
 const Client = require("../models/Client");
+const Company = require("../models/Company");
+const { createInvoiceFromPayment } = require("./InvoiceController");
 const mongoose = require("mongoose");
 
 // Create a new payment for an order
@@ -98,6 +100,36 @@ const createPayment = async (req, res) => {
 
     await order.save(); // This will trigger the pre-save hook to update payment status
 
+    // 🎯 AUTOMATICALLY CREATE INVOICE FOR THIS PAYMENT
+    let invoice = null;
+    try {
+      // Get company information
+      const company = await Company.findById(order.company);
+
+      // Get full order with populated products
+      const fullOrder = await Order.findById(orderId).populate({
+        path: "products.inventoryProduct",
+        select:
+          "bail_number design_code category_code lot_number stock_amount price",
+      });
+
+      // Create invoice from payment
+      invoice = await createInvoiceFromPayment(
+        newPayment._id,
+        fullOrder,
+        order.client,
+        company,
+        { _id: user._id, type }
+      );
+
+      console.log(
+        `✅ Invoice ${invoice.invoiceNumber} created automatically for payment ${newPayment._id}`
+      );
+    } catch (invoiceError) {
+      console.error("❌ Error creating invoice from payment:", invoiceError);
+      // Don't fail the payment if invoice creation fails
+    }
+
     // Populate the payment with related information for response
     const populatedPayment = await Payment.findById(newPayment._id)
       .populate(
@@ -110,6 +142,15 @@ const createPayment = async (req, res) => {
     res.status(201).json({
       message: "Payment recorded successfully",
       payment: populatedPayment,
+      invoice: invoice
+        ? {
+            _id: invoice._id,
+            invoiceNumber: invoice.invoiceNumber,
+            totalAmount: invoice.totalAmount,
+            status: invoice.status,
+            pdfGenerated: invoice.pdfGenerated,
+          }
+        : null,
       orderPaymentStatus: {
         totalAmount: order.totalAmount,
         paidAmount: order.paidAmount,

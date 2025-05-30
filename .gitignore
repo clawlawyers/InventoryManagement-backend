@@ -10,7 +10,7 @@ yarn.lock
 frontend/
 scripts/
 
-# dotenv environment variables
+# # dotenv environment variables
 .env
 .env.test
 .env.*.local
