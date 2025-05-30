@@ -97,7 +97,17 @@ const createInvoiceFromPayment = async (
   creatorData
 ) => {
   try {
-    console.log(`📝 Creating invoice for payment ${paymentId}`);
+    console.log(`📝 Attempting to create invoice for payment ${paymentId} and order ${orderData._id}`);
+
+    // Check if an invoice already exists for this order
+    const existingInvoice = await Invoice.findOne({ order: orderData._id });
+
+    if (existingInvoice) {
+      console.log(`⚠️ Invoice already exists for order ${orderData._id}. Returning existing invoice: ${existingInvoice.invoiceNumber}`);
+      // Optionally, you might want to update the existing invoice here with new payment details
+      // For now, we are just returning the existing one as requested.
+      return existingInvoice;
+    }
 
     const payment = await Payment.findById(paymentId);
     if (!payment) {

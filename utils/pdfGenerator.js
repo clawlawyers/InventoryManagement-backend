@@ -201,10 +201,12 @@ const generateInvoicePDF = async (invoice) => {
 
             // Draw row line with safe coordinates
             const rowLineY = Math.floor(y - 5);
+            console.log(`📏 Drawing row line for product ${index} at Y: ${rowLineY}`);
             doc.moveTo(Math.floor(tableLeft), rowLineY)
                .lineTo(Math.floor(tableLeft + tableWidth), rowLineY)
                .stroke();
 
+            console.log(`✍️ Drawing product ${index} text at Y: ${y}`);
             doc.text(product.bail_number || 'N/A', tableLeft, y);
             doc.text(product.design_code || 'N/A', tableLeft + colWidth, y);
             doc.text(product.category_code || 'N/A', tableLeft + colWidth * 2, y);
@@ -217,6 +219,7 @@ const generateInvoicePDF = async (invoice) => {
 
           // Draw final line with safe coordinates
           const finalLineY = Math.floor(y - 5);
+          console.log(`📏 Drawing final table line at Y: ${finalLineY}`);
           doc.moveTo(Math.floor(tableLeft), finalLineY)
              .lineTo(Math.floor(tableLeft + tableWidth), finalLineY)
              .stroke();
@@ -239,30 +242,42 @@ const generateInvoicePDF = async (invoice) => {
           subtotal: invoice.subtotal,
           taxRate: invoice.taxRate,
           taxAmount: invoice.taxAmount,
-          totalAmount: invoice.totalAmount
+          totalAmount: invoice.totalAmount,
+          paymentAmount: invoice.paymentAmount // Log payment amount
         });
 
         const subtotal = Number(invoice.subtotal) || 0;
         const taxRate = Number(invoice.taxRate) || 0;
         const taxAmount = Number(invoice.taxAmount) || 0;
         const totalAmount = Number(invoice.totalAmount) || subtotal;
+        const paymentAmount = Number(invoice.paymentAmount) || 0; // Get payment amount
+        const remainingBalance = totalAmount - paymentAmount; // Calculate remaining balance
 
         console.log('💰 Invoice totals after formatting:', {
           subtotal,
           taxRate,
           taxAmount,
           totalAmount,
+          paymentAmount, // Log payment amount
+          remainingBalance, // Log remaining balance
           subtotalType: typeof subtotal,
           taxRateType: typeof taxRate,
           taxAmountType: typeof taxAmount,
-          totalAmountType: typeof totalAmount
+          totalAmountType: typeof totalAmount,
+          paymentAmountType: typeof paymentAmount // Log payment amount type
         });
 
         doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, { align: 'right' });
-        if (taxRate > 0) {
-          doc.text(`Tax (${taxRate}%): ₹${taxAmount.toFixed(2)}`, { align: 'right' });
-        }
-        doc.fontSize(14).text(`Total Amount: ₹${totalAmount.toFixed(2)}`, { align: 'right' });
+
+        // Comment out Tax and original Total Amount as per user request
+        // if (taxRate > 0) {
+        //   doc.text(`Tax (${taxRate}%): ₹${taxAmount.toFixed(2)}`, { align: 'right' });
+        // }
+        // doc.fontSize(14).text(`Total Amount: ₹${totalAmount.toFixed(2)}`, { align: 'right' });
+
+        doc.text(`Amount Paid: ₹${paymentAmount.toFixed(2)}`, { align: 'right' });
+        doc.fontSize(14).text(`Remaining Balance: ₹${remainingBalance.toFixed(2)}`, { align: 'right' });
+
         doc.moveDown();
         console.log('✅ Totals added');
       } catch (error) {
