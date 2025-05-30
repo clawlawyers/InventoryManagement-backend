@@ -1,9 +1,9 @@
 const Order = require("../models/Order");
 const Client = require("../models/Client");
-const Manager = require("../models/Manager");
-const Salesman = require("../models/Salesman");
 const InventoryProduct = require("../models/InventoryProduct");
+const { generateOrderInvoicePDF } = require("../utils/pdfGenerator");
 const mongoose = require("mongoose");
+const fs = require("fs");
 
 // Create a new order using inventory products
 const createOrder = async (req, res) => {
@@ -377,9 +377,99 @@ const getOrderById = async (req, res) => {
   }
 };
 
+// Generate PDF invoice for completed order
+const generateOrderInvoice = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { user, type } = req.user;
+
+    // Validate orderId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    // Find the order with all necessary populated data
+    const order = await Order.findById(orderId)
+      .populate("client", "name phone firmName firmGSTNumber address")
+      .populate("company", "name address GSTNumber")
+      .populate("createdBy", "name email phone")
+      .populate({
+        path: "products.inventoryProduct",
+        select:
+          "bail_number design_code category_code lot_number stock_amount price",
+      });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check authorization - only allow access to orders the user can view
+    if (
+      type === "salesman" &&
+      order.createdBy._id.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only generate invoices for orders you created",
+      });
+    }
+
+    // Check if order is completed
+    if (order.status !== "completed") {
+      return res.status(400).json({
+        message: "Invoice can only be generated for completed orders",
+        currentStatus: order.status,
+      });
+    }
+
+    // Generate PDF
+    console.log(`📄 Generating invoice for order ${orderId}`);
+    const { filepath, filename } = await generateOrderInvoicePDF(order);
+
+    // Check if file was created successfully
+    if (!fs.existsSync(filepath)) {
+      throw new Error("PDF file was not created successfully");
+    }
+
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    // Stream the PDF file to response
+    const fileStream = fs.createReadStream(filepath);
+
+    fileStream.on("error", (error) => {
+      console.error("Error streaming PDF:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Error streaming PDF file",
+          error: error.message,
+        });
+      }
+    });
+
+    fileStream.on("end", () => {
+      console.log(`✅ PDF invoice sent successfully for order ${orderId}`);
+      // Optionally delete the file after sending
+      // fs.unlink(filepath, (err) => {
+      //   if (err) console.error('Error deleting PDF file:', err);
+      // });
+    });
+
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error("Error generating order invoice:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderById,
   getAllOrdersByClientId,
+  generateOrderInvoice,
 };

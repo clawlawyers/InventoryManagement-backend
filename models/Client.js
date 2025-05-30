@@ -103,13 +103,6 @@ const ClientSchema = new Schema({
       updatedAt: Date.now(),
     }),
   },
-  // For potential future use - linking clients to orders/invoices
-  invoices: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Invoice",
-    },
-  ],
 });
 
 // Note: Cart methods are now handled in the controller
