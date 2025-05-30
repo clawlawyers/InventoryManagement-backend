@@ -434,7 +434,7 @@ const clearCart = async (req, res) => {
 const checkoutCart = async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { paymentDueDate, cartItems } = req.body;
+    const { paymentDueDate, cartItems, companyId } = req.body;
     const { user, type } = req.user || {
       user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
       type: "manager",
@@ -464,6 +464,13 @@ const checkoutCart = async (req, res) => {
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({
         message: "Cart items are required and cannot be empty",
+      });
+    }
+
+    // Validate company ID
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
       });
     }
 
@@ -520,6 +527,7 @@ const checkoutCart = async (req, res) => {
     const order = new Order({
       products: orderProducts,
       client: client._id,
+      company: companyId,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "SalesmanTextile",
       totalAmount: totalAmount,
@@ -545,6 +553,10 @@ const checkoutCart = async (req, res) => {
       {
         path: "client",
         select: "name phone email address",
+      },
+      {
+        path: "company",
+        select: "name address GSTNumber",
       },
     ]);
     client.cart = {

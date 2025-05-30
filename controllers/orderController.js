@@ -8,7 +8,7 @@ const mongoose = require("mongoose");
 // Create a new order using inventory products
 const createOrder = async (req, res) => {
   try {
-    const { products, clientId, paymentDueDate } = req.body;
+    const { products, clientId, paymentDueDate, companyId } = req.body;
 
     // Get user information from the authentication middleware
     // For testing without auth, provide default values
@@ -28,6 +28,12 @@ const createOrder = async (req, res) => {
     if (!clientId) {
       return res.status(400).json({
         message: "Client ID is required",
+      });
+    }
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
       });
     }
 
@@ -123,6 +129,7 @@ const createOrder = async (req, res) => {
     const orderData = {
       products: orderProducts,
       client: clientId,
+      company: companyId,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "Salesman",
       totalAmount: totalOrderAmount,
@@ -148,6 +155,7 @@ const createOrder = async (req, res) => {
     // Populate the order with client, creator, and inventory product details for response
     const populatedOrder = await Order.findById(newOrder._id)
       .populate("client", "name phone firmName address")
+      .populate("company", "name address GSTNumber")
       .populate("createdBy", "name email phone")
       .populate({
         path: "products.inventoryProduct",
@@ -195,6 +203,7 @@ const getAllOrders = async (req, res) => {
         ],
       })
         .populate("client", "name phone firmName address")
+        .populate("company", "name address GSTNumber")
         .populate("createdBy", "name email phone")
         .populate({
           path: "products.inventoryProduct",
@@ -215,6 +224,7 @@ const getAllOrders = async (req, res) => {
       // Salesmen can only see orders they created
       orders = await Order.find({ createdBy: user._id })
         .populate("client", "name phone firmName address")
+        .populate("company", "name address GSTNumber")
         .populate("createdBy", "name email phone")
         .populate({
           path: "products.inventoryProduct",

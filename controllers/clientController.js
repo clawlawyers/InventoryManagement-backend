@@ -61,7 +61,21 @@ const createClient = async (req, res) => {
 // Get all clients
 const getAllClients = async (req, res) => {
   try {
-    const clients = await Client.find();
+    const { user, type } = req.user;
+
+    let clients;
+    if (type === "manager") {
+      // For managers, show all clients associated with them
+      clients = await Client.find({ manager: user._id });
+    } else if (type === "salesman") {
+      // For salesmen, show only their assigned clients
+      clients = await Client.find({ salesman: user._id });
+    } else {
+      return res.status(403).json({
+        message: "Unauthorized: Only managers and salesmen can view clients",
+      });
+    }
+
     res.json(clients);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -173,10 +187,13 @@ const createClientByManagerOrSalesman = async (req, res) => {
     }
 
     let assignedSalesmanId = null;
+    let managerId = null;
 
     // Handle salesman assignment based on user type
     if (type === "manager") {
       // If manager is creating the client, they can optionally assign a salesman
+      managerId = user._id; // Set manager ID directly from user
+
       if (salesmanId) {
         // Verify that the salesman exists and belongs to this manager
         const salesman = await Salesman.findById(salesmanId);
@@ -197,6 +214,13 @@ const createClientByManagerOrSalesman = async (req, res) => {
     } else if (type === "salesman") {
       // If salesman is creating the client, assign it to themselves
       assignedSalesmanId = user._id;
+
+      // Get manager ID from salesman record
+      const salesman = await Salesman.findById(user._id);
+      if (!salesman) {
+        return res.status(404).json({ message: "Salesman not found" });
+      }
+      managerId = salesman.manager;
     } else {
       return res.status(403).json({
         message: "Only managers and salesmen can create clients",
@@ -208,6 +232,7 @@ const createClientByManagerOrSalesman = async (req, res) => {
       name,
       phone,
       address,
+      manager: managerId, // Add manager field to client data
     };
 
     // Add optional fields if provided

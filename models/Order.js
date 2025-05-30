@@ -53,6 +53,11 @@ const OrderSchema = new Schema({
     required: false,
     min: 1,
   },
+  company: {
+    type: Schema.Types.ObjectId,
+    ref: "Company",
+    required: true,
+  },
   client: {
     type: Schema.Types.ObjectId,
     ref: "ClientTextile",

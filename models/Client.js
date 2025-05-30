@@ -88,6 +88,11 @@ const ClientSchema = new Schema({
     ref: "SalesmanTextile",
     required: false,
   },
+  manager: {
+    type: Schema.Types.ObjectId,
+    ref: "Manager",
+    required: true,
+  },
   // Embedded cart for this client
   cart: {
     type: CartSchema,
