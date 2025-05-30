@@ -188,6 +188,7 @@ const createOrder = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const { user, type } = req.user;
+    const { companyId } = req.params;
 
     let orders;
     if (type === "manager") {
@@ -198,8 +199,12 @@ const getAllOrders = async (req, res) => {
       // Find orders created by the manager or by salesmen under this manager
       orders = await Order.find({
         $or: [
-          { createdBy: user._id, creatorType: "Manager" },
-          { createdBy: { $in: salesmenIds }, creatorType: "Salesman" },
+          { createdBy: user._id, creatorType: "Manager", company: companyId },
+          {
+            createdBy: { $in: salesmenIds },
+            creatorType: "Salesman",
+            company: companyId,
+          },
         ],
       })
         .populate("client", "name phone firmName address")
@@ -222,7 +227,7 @@ const getAllOrders = async (req, res) => {
         .sort({ createdAt: -1 });
     } else if (type === "salesman") {
       // Salesmen can only see orders they created
-      orders = await Order.find({ createdBy: user._id })
+      orders = await Order.find({ createdBy: user._id, company: companyId })
         .populate("client", "name phone firmName address")
         .populate("company", "name address GSTNumber")
         .populate("createdBy", "name email phone")
@@ -264,12 +269,12 @@ const getAllOrders = async (req, res) => {
 const getAllOrdersByClientId = async (req, res) => {
   try {
     const { user, type } = req.user;
-    const { clientId } = req.params;
+    const { clientId, companyId } = req.params;
 
     let orders;
     if (type === "manager") {
       // Managers can see all orders
-      orders = await Order.find({ client: clientId })
+      orders = await Order.find({ client: clientId, company: companyId })
         .populate("client", "name phone firmName address")
         .populate("createdBy", "name email phone")
         .populate({
@@ -289,7 +294,11 @@ const getAllOrdersByClientId = async (req, res) => {
         .sort({ createdAt: -1 });
     } else if (type === "salesman") {
       // Salesmen can only see orders they created
-      orders = await Order.find({ createdBy: user._id, client: clientId })
+      orders = await Order.find({
+        createdBy: user._id,
+        client: clientId,
+        company: companyId,
+      })
         .populate("client", "name phone firmName address")
         .populate("createdBy", "name email phone")
         .populate({
