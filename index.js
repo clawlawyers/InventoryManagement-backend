@@ -15,6 +15,7 @@ app.use(express.json());
 
 // Add request logging middleware
 app.use((req, res, next) => {
+  console.log("=============================================");
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });

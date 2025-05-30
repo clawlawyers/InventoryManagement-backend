@@ -10,6 +10,8 @@ const requireAuth = async (req, res, next) => {
       return res.status(401).json({ message: "Authorization token missing" });
     }
 
+    console.log("Token:", token);
+
     const decoded = await jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.type === "manager") {

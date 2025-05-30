@@ -380,6 +380,7 @@ const getOrderById = async (req, res) => {
 // Generate PDF invoice for completed order
 const generateOrderInvoice = async (req, res) => {
   try {
+    console.log("=============================================");
     const { orderId } = req.params;
     const { user, type } = req.user;
 
