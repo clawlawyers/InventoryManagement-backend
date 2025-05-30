@@ -389,6 +389,10 @@ const generateOrderInvoicePDF = async (order) => {
         bufferPages: true,
       });
 
+      // Register a font that supports rupee symbol (optional)
+      // doc.registerFont('DejaVu', 'path/to/DejaVuSans.ttf');
+      // doc.font('DejaVu');
+
       // Create write stream
       const stream = fs.createWriteStream(filepath);
       doc.pipe(stream);
@@ -413,46 +417,72 @@ const generateOrderInvoicePDF = async (order) => {
       });
 
       // Header
-      doc.fontSize(20).text("ORDER INVOICE", { align: "center" });
-      doc.moveDown();
+      doc
+        .fontSize(20)
+        .font("Helvetica-Bold")
+        .text("ORDER INVOICE", { align: "center" });
+      doc.moveDown(2); // More space after header
 
       // Company details
       if (order.company) {
-        doc.fontSize(14).text("FROM:", { underline: true });
-        doc.fontSize(12).text(`Company: ${order.company.name || "N/A"}`);
-        doc.text(`Address: ${order.company.address || "N/A"}`);
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .text("FROM:", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12).font("Helvetica");
+        doc.text(`Company: ${order.company.name || "N/A"}`, { lineGap: 4 });
+        doc.text(`Address: ${order.company.address || "N/A"}`, { lineGap: 4 });
         if (order.company.GSTNumber) {
-          doc.text(`GST Number: ${order.company.GSTNumber}`);
+          doc.text(`GST Number: ${order.company.GSTNumber}`, { lineGap: 4 });
         }
-        doc.moveDown();
+        doc.moveDown(1.5);
       }
 
       // Client details
       if (order.client) {
-        doc.fontSize(14).text("TO:", { underline: true });
-        doc.fontSize(12).text(`Client: ${order.client.name || "N/A"}`);
-        doc.text(`Phone: ${order.client.phone || "N/A"}`);
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .text("TO:", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12).font("Helvetica");
+        doc.text(`Client: ${order.client.name || "N/A"}`, { lineGap: 4 });
+        doc.text(`Phone: ${order.client.phone || "N/A"}`, { lineGap: 4 });
         if (order.client.firmName) {
-          doc.text(`Firm: ${order.client.firmName}`);
+          doc.text(`Firm: ${order.client.firmName}`, { lineGap: 4 });
         }
         if (order.client.firmGSTNumber) {
-          doc.text(`GST Number: ${order.client.firmGSTNumber}`);
+          doc.text(`GST Number: ${order.client.firmGSTNumber}`, { lineGap: 4 });
         }
-        doc.text(`Address: ${order.client.address || "N/A"}`);
-        doc.moveDown();
+        doc.text(`Address: ${order.client.address || "N/A"}`, { lineGap: 4 });
+        doc.moveDown(1.5);
       }
 
       // Order details
-      doc.fontSize(14).text("ORDER DETAILS:", { underline: true });
-      doc.fontSize(12).text(`Order ID: ${order._id}`);
-      doc.text(`Order Date: ${new Date(order.createdAt).toLocaleDateString()}`);
-      doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`);
-      doc.text(`Status: ${order.status.toUpperCase()}`);
-      doc.moveDown();
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("ORDER DETAILS:", { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica");
+      doc.text(`Order ID: ${order._id}`, { lineGap: 4 });
+      doc.text(
+        `Order Date: ${new Date(order.createdAt).toLocaleDateString()}`,
+        { lineGap: 4 }
+      );
+      doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, {
+        lineGap: 4,
+      });
+      doc.text(`Status: ${order.status.toUpperCase()}`, { lineGap: 4 });
+      doc.moveDown(2);
 
       // Products table header
-      doc.fontSize(14).text("PRODUCTS:", { underline: true });
-      doc.moveDown(0.5);
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("PRODUCTS:", { underline: true });
+      doc.moveDown(1);
 
       // Table headers
       const tableTop = doc.y;
@@ -462,23 +492,28 @@ const generateOrderInvoicePDF = async (order) => {
       const priceX = 420;
       const totalX = 490;
 
-      doc.fontSize(10);
-      doc.text("Item Code", itemCodeX, tableTop, { width: 90 });
-      doc.text("Description", descriptionX, tableTop, { width: 180 });
-      doc.text("Qty", quantityX, tableTop, { width: 50 });
-      doc.text("Unit Price", priceX, tableTop, { width: 60 });
-      doc.text("Total", totalX, tableTop, { width: 60 });
+      doc.fontSize(11).font("Helvetica-Bold");
+      doc.text("Item Code", itemCodeX, tableTop, { width: 90, lineGap: 2 });
+      doc.text("Description", descriptionX, tableTop, {
+        width: 180,
+        lineGap: 2,
+      });
+      doc.text("Qty", quantityX, tableTop, { width: 50, lineGap: 2 });
+      doc.text("Unit Price", priceX, tableTop, { width: 60, lineGap: 2 });
+      doc.text("Total", totalX, tableTop, { width: 60, lineGap: 2 });
 
       // Draw line under headers
       doc
-        .moveTo(itemCodeX, tableTop + 15)
-        .lineTo(totalX + 60, tableTop + 15)
+        .moveTo(itemCodeX, tableTop + 22)
+        .lineTo(totalX + 60, tableTop + 22)
         .stroke();
 
-      let currentY = tableTop + 25;
+      let currentY = tableTop + 35;
 
       // Products data
       if (order.products && order.products.length > 0) {
+        doc.fontSize(10).font("Helvetica"); // Set font for product rows
+
         order.products.forEach((product) => {
           const inventoryProduct = product.inventoryProduct;
 
@@ -487,30 +522,36 @@ const generateOrderInvoicePDF = async (order) => {
             inventoryProduct?.design_code ||
             inventoryProduct?.bail_number ||
             "N/A";
-          doc.text(itemCode, itemCodeX, currentY, { width: 90 });
+          doc.text(itemCode, itemCodeX, currentY, { width: 90, lineGap: 3 });
 
           // Description (category_code + lot_number)
           const description = `${inventoryProduct?.category_code || "N/A"} - ${
             inventoryProduct?.lot_number || "N/A"
           }`;
-          doc.text(description, descriptionX, currentY, { width: 180 });
+          doc.text(description, descriptionX, currentY, {
+            width: 180,
+            lineGap: 3,
+          });
 
           // Quantity
           doc.text(product.quantity.toString(), quantityX, currentY, {
             width: 50,
+            lineGap: 3,
           });
 
           // Unit Price
-          doc.text(`₹${product.unitPrice.toFixed(2)}`, priceX, currentY, {
+          doc.text(`Rs. ${product.unitPrice.toFixed(2)}`, priceX, currentY, {
             width: 60,
+            lineGap: 3,
           });
 
           // Total Price
-          doc.text(`₹${product.totalPrice.toFixed(2)}`, totalX, currentY, {
+          doc.text(`Rs. ${product.totalPrice.toFixed(2)}`, totalX, currentY, {
             width: 60,
+            lineGap: 3,
           });
 
-          currentY += 20;
+          currentY += 30; // Even more spacing between product rows
         });
       }
 
@@ -522,48 +563,60 @@ const generateOrderInvoicePDF = async (order) => {
 
       currentY += 15;
 
-      // Totals
+      // Totals section with better spacing
+      currentY += 20; // More space before totals
       doc.fontSize(12);
+
+      // Total Amount (bold and larger)
+      doc.fontSize(14).font("Helvetica-Bold");
       doc.text(
-        `Total Amount: ₹${order.totalAmount.toFixed(2)}`,
+        `Total Amount: Rs. ${order.totalAmount.toFixed(2)}`,
         priceX,
         currentY,
-        { width: 120 }
+        { width: 250, lineGap: 5 }
       );
-      currentY += 20;
+      currentY += 30; // More spacing after total amount
+
+      // Reset to normal font
+      doc.fontSize(12).font("Helvetica");
 
       if (order.paidAmount > 0) {
         doc.text(
-          `Paid Amount: ₹${order.paidAmount.toFixed(2)}`,
+          `Paid Amount: Rs. ${order.paidAmount.toFixed(2)}`,
           priceX,
           currentY,
-          { width: 120 }
+          { width: 150, lineGap: 4 }
         );
-        currentY += 20;
+        currentY += 28; // Increased spacing
       }
 
       if (order.dueAmount > 0) {
         doc.text(
-          `Due Amount: ₹${order.dueAmount.toFixed(2)}`,
+          `Due Amount: Rs. ${order.dueAmount.toFixed(2)}`,
           priceX,
           currentY,
-          { width: 120 }
+          { width: 150, lineGap: 4 }
         );
-        currentY += 20;
+        currentY += 28; // Increased spacing
       }
 
+      // Payment Status with some emphasis
+      doc.fontSize(11).font("Helvetica-Bold");
       doc.text(
         `Payment Status: ${order.paymentStatus.toUpperCase()}`,
         priceX,
         currentY,
-        { width: 120 }
+        { width: 150, lineGap: 4 }
       );
 
-      // Footer
-      doc.moveDown(2);
-      doc
-        .fontSize(10)
-        .text("Thank you for your business!", { align: "center" });
+      // Footer with better spacing
+      currentY += 40; // More space before footer
+      doc.fontSize(10).font("Helvetica");
+      doc.text("Thank you for your business!", 50, currentY, {
+        align: "center",
+        width: 500,
+        lineGap: 5,
+      });
 
       // Finalize PDF
       doc.end();

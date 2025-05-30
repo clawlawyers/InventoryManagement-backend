@@ -1,9 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { sendPaymentWhatsApp } = require("../controllers/whatsappController");
+const {
+  sendPaymentWhatsApp,
+  testWhatsAppService,
+} = require("../controllers/whatsappController");
 const { requireAuth } = require("../middleware/requireAuth");
 
 // WhatsApp notification routes
-router.post("/payment/:orderId",sendPaymentWhatsApp);
+router.post("/payment/:orderId", requireAuth, sendPaymentWhatsApp);
+router.get("/test", testWhatsAppService); // Test endpoint (no auth required for testing)
 
-module.exports = router; 
+module.exports = router;
