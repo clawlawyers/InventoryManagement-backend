@@ -50,9 +50,9 @@ const sendPaymentWhatsApp = async (req, res) => {
     formData.append("originWebsite", "www.clawlaw.in");
     formData.append("templateName", "textile_app");
     formData.append("language", "en");
-    formData.append("data[1]", paymentStatus);
-    formData.append("data[2]", paidAmount.toString());
-    formData.append("data[3]", pendingAmount.toString());
+    formData.append("data[0]", paymentStatus);
+    formData.append("data[1]", paidAmount.toString());
+    formData.append("data[2]", pendingAmount.toString());
 
     // Send request to 11za API with timeout and retry logic
     let response;

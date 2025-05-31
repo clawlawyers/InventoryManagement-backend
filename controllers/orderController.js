@@ -3,7 +3,6 @@ const Client = require("../models/Client");
 const InventoryProduct = require("../models/InventoryProduct");
 const { generateOrderInvoicePDF } = require("../utils/pdfGenerator");
 const mongoose = require("mongoose");
-const fs = require("fs");
 
 // Create a new order using inventory products
 const createOrder = async (req, res) => {
@@ -423,41 +422,20 @@ const generateOrderInvoice = async (req, res) => {
       });
     }
 
-    // Generate PDF
+    // Generate PDF in memory
     console.log(`📄 Generating invoice for order ${orderId}`);
-    const { filepath, filename } = await generateOrderInvoicePDF(order);
-
-    // Check if file was created successfully
-    if (!fs.existsSync(filepath)) {
-      throw new Error("PDF file was not created successfully");
-    }
+    const { buffer, filename, size } = await generateOrderInvoicePDF(order);
 
     // Set response headers for PDF download
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", size);
 
-    // Stream the PDF file to response
-    const fileStream = fs.createReadStream(filepath);
-
-    fileStream.on("error", (error) => {
-      console.error("Error streaming PDF:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          message: "Error streaming PDF file",
-          error: error.message,
-        });
-      }
-    });
-
-    fileStream.on("end", () => {
-      console.log(`✅ PDF invoice sent successfully for order ${orderId}`);
-      // Optionally delete the file after sending
-      // fs.unlink(filepath, (err) => {
-      //   if (err) console.error('Error deleting PDF file:', err);
-      // });
-    });
-
-    fileStream.pipe(res);
+    // Send the PDF buffer directly to response
+    console.log(
+      `✅ PDF invoice generated and sent successfully for order ${orderId} (${size} bytes)`
+    );
+    res.send(buffer);
   } catch (error) {
     console.error("Error generating order invoice:", error);
     res.status(500).json({

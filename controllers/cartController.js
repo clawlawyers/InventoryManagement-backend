@@ -566,6 +566,7 @@ const checkoutCart = async (req, res) => {
       updatedAt: Date.now(),
     };
     await client.save();
+    ssss;
 
     res.status(201).json({
       message: "Cart checked out successfully",

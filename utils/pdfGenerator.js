@@ -357,11 +357,13 @@ const generateInvoicePDF = async (invoice) => {
   });
 };
 
-// Generate Order Invoice PDF
+// Generate Order Invoice PDF in memory (no file storage)
 const generateOrderInvoicePDF = async (order) => {
   return new Promise((resolve, reject) => {
     try {
-      console.log(`📄 Starting PDF generation for order ${order._id}`);
+      console.log(
+        `📄 Starting in-memory PDF generation for order ${order._id}`
+      );
 
       // Validate required order data
       if (!order._id) {
@@ -371,16 +373,6 @@ const generateOrderInvoicePDF = async (order) => {
       if (order.status !== "completed") {
         throw new Error("Order must be completed to generate invoice");
       }
-
-      // Generate unique filename
-      const filename = `order_invoice_${order._id}_${Date.now()}.pdf`;
-      const filepath = path.join(invoicesDir, filename);
-
-      console.log("📁 PDF file path:", {
-        filename,
-        filepath,
-        exists: fs.existsSync(filepath),
-      });
 
       // Create PDF document
       const doc = new PDFDocument({
@@ -393,21 +385,20 @@ const generateOrderInvoicePDF = async (order) => {
       // doc.registerFont('DejaVu', 'path/to/DejaVuSans.ttf');
       // doc.font('DejaVu');
 
-      // Create write stream
-      const stream = fs.createWriteStream(filepath);
-      doc.pipe(stream);
+      // Collect PDF data in memory
+      const chunks = [];
 
-      // Add error handlers
-      stream.on("error", (error) => {
-        console.error("❌ Stream error:", error);
-        reject(error);
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
       });
 
-      stream.on("finish", () => {
-        console.log("✅ Stream finished successfully");
+      doc.on("end", () => {
+        console.log("✅ PDF generated successfully in memory");
+        const pdfBuffer = Buffer.concat(chunks);
         resolve({
-          filepath,
-          filename,
+          buffer: pdfBuffer,
+          filename: `order_invoice_${order._id}_${Date.now()}.pdf`,
+          size: pdfBuffer.length,
         });
       });
 
