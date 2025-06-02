@@ -1,5 +1,7 @@
 const Order = require("../models/Order");
 const mongoose = require("mongoose");
+const InventoryProduct = require("../models/InventoryProduct");
+const Company = require("../models/Company");
 
 // Get sales analytics for a specific product
 const getProductSalesAnalytics = async (req, res) => {
@@ -305,8 +307,319 @@ const getOrderPaymentStats = async (req, res) => {
   }
 };
 
+// Get cumulative stock and order statistics
+const getCumulativeStockStats = async (req, res) => {
+  try {
+    const { companyId } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
+      });
+    }
+
+    // Validate companyId
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      return res.status(400).json({
+        message: "Invalid Company ID format",
+      });
+    }
+
+    // Get all inventory products for the company
+    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
+      .populate({
+        path: 'inventory',
+        populate: {
+          path: 'products'
+        }
+      });
+
+    console.log('Company found:', company ? 'yes' : 'no');
+    if (!company) {
+      return res.status(404).json({
+        message: "Company not found"
+      });
+    }
+
+    console.log('Inventory found:', company.inventory ? 'yes' : 'no');
+    if (!company.inventory) {
+      return res.status(404).json({
+        message: "Inventory not found for this company"
+      });
+    }
+
+    const inventoryProducts = company.inventory.products || [];
+    console.log('Found inventory products:', inventoryProducts.length);
+
+    // Get all orders for the company
+    const orders = await Order.find({
+      company: mongoose.Types.ObjectId.createFromHexString(companyId)
+    }).populate('products.inventoryProduct');
+
+    console.log('Found orders:', orders.length);
+
+    // Initialize overall stats
+    const overallStats = {
+      totalProducts: inventoryProducts.length,
+      totalStock: 0,
+      totalStockValue: 0,
+      totalOrders: 0,
+      totalOrderedQuantity: 0,
+      totalOrderValue: 0
+    };
+
+    // Process each product
+    for (const product of inventoryProducts) {
+      if (!product) {
+        console.log('Skipping null product');
+        continue;
+      }
+      console.log('Processing product:', {
+        id: product._id,
+        bail: product.bail_number,
+        stock: product.stock_amount,
+        price: product.price,
+        stockValue: product.stock_amount * product.price
+      });
+
+      // Calculate orders for this product
+      orders.forEach(order => {
+        if (!order || !order.products) return;
+        
+        const orderProduct = order.products.find(p => 
+          p && p.inventoryProduct && 
+          p.inventoryProduct._id && 
+          p.inventoryProduct._id.toString() === product._id.toString()
+        );
+        
+        if (orderProduct) {
+          overallStats.totalOrderedQuantity += orderProduct.quantity;
+          overallStats.totalOrderValue += orderProduct.totalPrice;
+        }
+      });
+
+      overallStats.totalStock += product.stock_amount;
+      overallStats.totalStockValue += (product.stock_amount * product.price);
+    }
+
+    overallStats.totalOrders = orders.length;
+
+    res.json({
+      message: "Cumulative stock statistics retrieved successfully",
+      stats: overallStats
+    });
+  } catch (error) {
+    console.error("Error fetching cumulative stock statistics:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Get product-wise stock statistics
+const getProductWiseStockStats = async (req, res) => {
+  try {
+    const { companyId } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
+      });
+    }
+
+    // Validate companyId
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      return res.status(400).json({
+        message: "Invalid Company ID format",
+      });
+    }
+
+    // Get all inventory products for the company
+    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
+      .populate({
+        path: 'inventory',
+        populate: {
+          path: 'products'
+        }
+      });
+
+    if (!company || !company.inventory) {
+      return res.status(404).json({
+        message: "Company or inventory not found"
+      });
+    }
+
+    const inventoryProducts = company.inventory.products || [];
+    console.log('Found inventory products:', inventoryProducts.length);
+
+    // Get all orders for the company
+    const orders = await Order.find({
+      company: mongoose.Types.ObjectId.createFromHexString(companyId)
+    }).populate('products.inventoryProduct');
+
+    // Initialize overall stats
+    const overallStats = {
+      totalProducts: inventoryProducts.length,
+      totalStock: 0,
+      totalStockValue: 0,
+      totalOrders: 0,
+      totalOrderedQuantity: 0,
+      totalOrderValue: 0
+    };
+
+    // Process each product
+    for (const product of inventoryProducts) {
+      if (!product) continue;
+
+      let productOrdered = 0;
+      let productOrderValue = 0;
+
+      // Calculate orders for this product
+      orders.forEach(order => {
+        if (!order || !order.products) return;
+        
+        const orderProduct = order.products.find(p => 
+          p && p.inventoryProduct && 
+          p.inventoryProduct._id && 
+          p.inventoryProduct._id.toString() === product._id.toString()
+        );
+        
+        if (orderProduct) {
+          productOrdered += orderProduct.quantity;
+          productOrderValue += orderProduct.totalPrice;
+        }
+      });
+
+      overallStats.totalStock += product.stock_amount;
+      overallStats.totalStockValue += (product.stock_amount * product.price);
+      overallStats.totalOrderedQuantity += productOrdered;
+      overallStats.totalOrderValue += productOrderValue;
+    }
+
+    overallStats.totalOrders = orders.length;
+
+    res.json({
+      message: "Product-wise stock statistics retrieved successfully",
+      stats: overallStats
+    });
+  } catch (error) {
+    console.error("Error fetching product-wise stock statistics:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Get design-wise stock statistics
+const getDesignWiseStockStats = async (req, res) => {
+  try {
+    const { companyId } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
+      });
+    }
+
+    // Validate companyId
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      return res.status(400).json({
+        message: "Invalid Company ID format",
+      });
+    }
+
+    // Get all inventory products for the company
+    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
+      .populate({
+        path: 'inventory',
+        populate: {
+          path: 'products'
+        }
+      });
+
+    if (!company || !company.inventory) {
+      return res.status(404).json({
+        message: "Company or inventory not found"
+      });
+    }
+
+    const inventoryProducts = company.inventory.products || [];
+    console.log('Found inventory products:', inventoryProducts.length);
+
+    // Get all orders for the company
+    const orders = await Order.find({
+      company: mongoose.Types.ObjectId.createFromHexString(companyId)
+    }).populate('products.inventoryProduct');
+
+    // Initialize stats
+    const stats = {
+      totalDesigns: 0,
+      totalStock: 0,
+      totalStockValue: 0,
+      totalOrders: 0,
+      totalOrderedQuantity: 0,
+      totalOrderValue: 0
+    };
+
+    // Track unique design codes
+    const uniqueDesigns = new Set();
+
+    // Process each product
+    for (const product of inventoryProducts) {
+      if (!product) continue;
+
+      const designCode = product.design_code || 'Unknown';
+      uniqueDesigns.add(designCode);
+
+      let productOrdered = 0;
+      let productOrderValue = 0;
+
+      // Calculate orders for this product
+      orders.forEach(order => {
+        if (!order || !order.products) return;
+        
+        const orderProduct = order.products.find(p => 
+          p && p.inventoryProduct && 
+          p.inventoryProduct._id && 
+          p.inventoryProduct._id.toString() === product._id.toString()
+        );
+        
+        if (orderProduct) {
+          productOrdered += orderProduct.quantity;
+          productOrderValue += orderProduct.totalPrice;
+        }
+      });
+
+      // Update total stats
+      stats.totalStock += product.stock_amount;
+      stats.totalStockValue += (product.stock_amount * product.price);
+      stats.totalOrderedQuantity += productOrdered;
+      stats.totalOrderValue += productOrderValue;
+    }
+
+    stats.totalDesigns = uniqueDesigns.size;
+    stats.totalOrders = orders.length;
+
+    res.json({
+      message: "Design-wise stock statistics retrieved successfully",
+      stats
+    });
+  } catch (error) {
+    console.error("Error fetching design-wise stock statistics:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProductSalesAnalytics,
   getAllProductsSalesAnalytics,
-  getOrderPaymentStats
+  getOrderPaymentStats,
+  getCumulativeStockStats,
+  getProductWiseStockStats,
+  getDesignWiseStockStats
 }; 
