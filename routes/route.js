@@ -14,6 +14,7 @@ const cartRoutes = require("./cartRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const imageGenerationRoutes = require("./imageGeneration");
 const whatsappRoutes = require("./whatsappRoutes");
+const salesAnalyticsRoutes = require("./salesAnalyticsRoutes");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -28,5 +29,6 @@ router.use("/cart", cartRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/genImg", imageGenerationRoutes);
 router.use("/whatsapp", whatsappRoutes);
+router.use("/analytics", salesAnalyticsRoutes);
 
 module.exports = router;
