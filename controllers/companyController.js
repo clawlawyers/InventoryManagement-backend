@@ -102,9 +102,7 @@ const getCompanyById = async (req, res) => {
 const createCompany = async (req, res) => {
   try {
     console.log("req is coming");
-    if (req.user.type !== "manager") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+
     const { name, address, GSTNumber } = req.body;
     const newCompany = new Company({
       name,

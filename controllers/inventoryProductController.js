@@ -3,6 +3,23 @@ const Inventory = require("../models/Inventory");
 const InventoryProduct = require("../models/InventoryProduct");
 const mongoose = require("mongoose");
 
+const getInventoryName = async (req, res) => {
+  try {
+    const { inventoryId } = req.params;
+
+    // Check if inventory exists
+    const inventory = await Inventory.findById(inventoryId);
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory not found" });
+    }
+
+    res.json(inventory.inventoryName);
+  } catch (err) {
+    console.error("Error fetching inventory name:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Create a new inventory product manually
 const createInventoryProduct = async (req, res) => {
   try {
@@ -155,7 +172,7 @@ const deleteInventoryProduct = async (req, res) => {
     await inventory.save();
 
     // Delete the product
-    await InventoryProduct.findByIdAndDelete(productId);
+    // await InventoryProduct.findByIdAndDelete(productId);
 
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
@@ -170,4 +187,5 @@ module.exports = {
   getInventoryProductById,
   updateInventoryProduct,
   deleteInventoryProduct,
+  getInventoryName,
 };

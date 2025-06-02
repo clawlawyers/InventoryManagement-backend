@@ -10,6 +10,7 @@ const {
   getInventoryProductById,
   updateInventoryProduct,
   deleteInventoryProduct,
+  getInventoryName,
 } = require("../controllers/inventoryProductController");
 const router = express.Router();
 
@@ -26,5 +27,7 @@ router.delete(
   requireAuth,
   deleteInventoryProduct
 );
+
+router.get("/getInventoryName/:inventoryId", requireAuth, getInventoryName);
 
 module.exports = router;

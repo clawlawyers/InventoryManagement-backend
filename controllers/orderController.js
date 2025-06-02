@@ -130,7 +130,7 @@ const createOrder = async (req, res) => {
       client: clientId,
       company: companyId,
       createdBy: user._id,
-      creatorType: type === "manager" ? "Manager" : "Salesman",
+      creatorType: type === "manager" ? "Manager" : "SalesmanTextile",
       totalAmount: totalOrderAmount,
     };
 
@@ -201,7 +201,7 @@ const getAllOrders = async (req, res) => {
           { createdBy: user._id, creatorType: "Manager", company: companyId },
           {
             createdBy: { $in: salesmenIds },
-            creatorType: "Salesman",
+            creatorType: "SalesmanTextile",
             company: companyId,
           },
         ],

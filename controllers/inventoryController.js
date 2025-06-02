@@ -5,13 +5,6 @@ const createInventory = async (req, res) => {
   try {
     const { inventoryName, companyId } = req.body;
 
-    // Check if user is a manager
-    if (req.user.type !== "manager") {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: Only managers can create inventory" });
-    }
-
     // Check if company belongs to the manager
     // const companyExists = req.user.user.companies.includes(companyId);
     // if (!companyExists) {
@@ -41,9 +34,9 @@ const createInventory = async (req, res) => {
 const getProductByProductId = async (req, res) => {
   try {
     console.log("Req is coming");
-    if (req.user.type !== "manager") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    // if (req.user.type !== "manager") {
+    //   return res.status(401).json({ message: "Unauthorized" });
+    // }
     const inventoryId = req.params.id;
 
     console.log(inventoryId);
