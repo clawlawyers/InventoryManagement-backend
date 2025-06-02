@@ -214,7 +214,99 @@ const getAllProductsSalesAnalytics = async (req, res) => {
   }
 };
 
+// Get order payment statistics
+const getOrderPaymentStats = async (req, res) => {
+  try {
+    const { companyId, startDate, endDate } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required",
+      });
+    }
+
+    // Validate companyId
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      return res.status(400).json({
+        message: "Invalid Company ID format",
+      });
+    }
+
+    const matchQuery = {
+      company: new mongoose.Types.ObjectId(companyId),
+    };
+
+    if (startDate && endDate) {
+      matchQuery.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    const paymentStats = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: "$paymentStatus",
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$totalAmount" },
+          dueAmount: { $sum: "$dueAmount" },
+          paidAmount: { $sum: "$paidAmount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          paymentStatus: "$_id",
+          count: 1,
+          totalAmount: 1,
+          dueAmount: 1,
+          paidAmount: 1,
+        },
+      },
+    ]);
+
+    // Get total orders count
+    const totalOrders = await Order.countDocuments(matchQuery);
+
+    // Calculate summary
+    const summary = {
+      totalOrders,
+      totalAmount: 0,
+      totalDueAmount: 0,
+      totalPaidAmount: 0,
+      byStatus: {}
+    };
+
+    // Process payment stats
+    paymentStats.forEach(stat => {
+      summary.byStatus[stat.paymentStatus] = {
+        count: stat.count,
+        totalAmount: stat.totalAmount,
+        dueAmount: stat.dueAmount,
+        paidAmount: stat.paidAmount
+      };
+      summary.totalAmount += stat.totalAmount;
+      summary.totalDueAmount += stat.dueAmount;
+      summary.totalPaidAmount += stat.paidAmount;
+    });
+
+    res.json({
+      message: "Order payment statistics retrieved successfully",
+      summary,
+      detailedStats: paymentStats
+    });
+  } catch (error) {
+    console.error("Error fetching order payment statistics:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProductSalesAnalytics,
   getAllProductsSalesAnalytics,
+  getOrderPaymentStats
 }; 
