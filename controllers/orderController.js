@@ -445,10 +445,47 @@ const generateOrderInvoice = async (req, res) => {
   }
 };
 
+// Delete an order
+const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { user, type } = req.user;
+
+    // Find the order
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check authorization
+    if (type === "salesman" && order.createdBy.toString() !== user._id.toString()) {
+      return res.status(403).json({
+        message: "Forbidden: You can only delete orders you created",
+      });
+    }
+
+    // Delete the order
+    await Order.findByIdAndDelete(orderId);
+
+    res.json({
+      message: "Order deleted successfully",
+      orderId: orderId
+    });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderById,
   getAllOrdersByClientId,
   generateOrderInvoice,
+  deleteOrder,
 };

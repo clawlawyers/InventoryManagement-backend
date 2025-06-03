@@ -6,6 +6,7 @@ const {
   getOrderById,
   getAllOrdersByClientId,
   generateOrderInvoice,
+  deleteOrder,
 } = require("../controllers/orderController");
 const { requireAuth } = require("../middleware/requireAuth");
 
@@ -18,5 +19,6 @@ router.get("/invoice/:orderId", requireAuth, generateOrderInvoice);
 router.get("/:companyId", requireAuth, getAllOrders);
 router.get("/:clientId/:companyId", requireAuth, getAllOrdersByClientId);
 router.get("/:id", requireAuth, getOrderById);
+router.delete("/:orderId", requireAuth, deleteOrder);
 
 module.exports = router;
