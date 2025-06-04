@@ -12,6 +12,9 @@ const createPayment = async (req, res) => {
       paymentReference,
       paymentDate,
       notes,
+      gst,
+      discountPercentage,
+      discountValue,
     } = req.body;
 
     // Get user information from the authentication middleware
@@ -80,6 +83,9 @@ const createPayment = async (req, res) => {
       paymentReference,
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       notes,
+      gst,
+      discountPercentage,
+      discountValue,
       receivedBy: user._id,
       receivedByType: type === "manager" ? "Manager" : "SalesmanTextile",
     });

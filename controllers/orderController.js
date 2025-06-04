@@ -459,7 +459,10 @@ const deleteOrder = async (req, res) => {
     }
 
     // Check authorization
-    if (type === "salesman" && order.createdBy.toString() !== user._id.toString()) {
+    if (
+      type === "salesman" &&
+      order.createdBy.toString() !== user._id.toString()
+    ) {
       return res.status(403).json({
         message: "Forbidden: You can only delete orders you created",
       });
@@ -468,9 +471,12 @@ const deleteOrder = async (req, res) => {
     // Delete the order
     await Order.findByIdAndDelete(orderId);
 
+    // Delete associated payments
+    await Payment.deleteMany({ order: new mongoose.Types.ObjectId(orderId) });
+
     res.json({
       message: "Order deleted successfully",
-      orderId: orderId
+      orderId: orderId,
     });
   } catch (error) {
     console.error("Error deleting order:", error);

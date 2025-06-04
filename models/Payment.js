@@ -44,6 +44,21 @@ const PaymentSchema = new Schema({
     type: String,
     required: false,
   },
+  discountPercentage: {
+    type: Number,
+    required: false,
+    min: 0,
+    max: 100,
+  },
+  discountValue: {
+    type: Number,
+    required: false,
+    min: 0,
+  },
+  gst: {
+    type: Number,
+    required: false,
+  },
   receivedBy: {
     type: Schema.Types.ObjectId,
     required: true,
