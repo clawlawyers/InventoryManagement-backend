@@ -2,6 +2,7 @@ const Salesman = require("../models/Salesman");
 const Permission = require("../models/permissions");
 const Manager = require("../models/Manager");
 const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 const permissions = require("../models/permissions");
 
 // Generate a random user ID with prefix SM followed by 4 digits
@@ -92,6 +93,10 @@ const createSalesman = async (req, res) => {
     const user_id = await generateUserId();
     const password = generatePassword();
 
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create default permissions
     const permission = new Permission({
       deleteClient: false,
@@ -110,7 +115,7 @@ const createSalesman = async (req, res) => {
       user_id,
       name,
       phone,
-      password,
+      password: hashedPassword,
       permissions: permission._id,
       manager: managerId,
     });
@@ -134,7 +139,6 @@ const createSalesman = async (req, res) => {
         name: salesman.name,
         phone: salesman.phone,
         user_id: salesman.user_id,
-        password: salesman.password, // Include password in response so manager can share it
         user_type: salesman.user_type,
       },
     });

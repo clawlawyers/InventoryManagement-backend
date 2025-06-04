@@ -471,8 +471,22 @@ const deleteOrder = async (req, res) => {
     // Delete the order
     await Order.findByIdAndDelete(orderId);
 
+    const { restock } = req.query;
+
     // Delete associated payments
     await Payment.deleteMany({ order: new mongoose.Types.ObjectId(orderId) });
+
+    // Restock inventory if restock is true
+    if (restock === "true") {
+      const order = await Order.findById(orderId);
+      if (order) {
+        for (const product of order.products) {
+          await InventoryProduct.findByIdAndUpdate(product.inventoryProduct, {
+            $inc: { stock_amount: product.quantity },
+          });
+        }
+      }
+    }
 
     res.json({
       message: "Order deleted successfully",
