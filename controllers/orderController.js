@@ -474,7 +474,7 @@ const deleteOrder = async (req, res) => {
     const { restock } = req.query;
 
     // Delete associated payments
-    await Payment.deleteMany({ order: new mongoose.Types.ObjectId(orderId) });
+    await Payment.deleteMany({ order: new mongoose.Types.ObjectId(String(orderId)) });
 
     // Restock inventory if restock is true
     if (restock === "true") {
