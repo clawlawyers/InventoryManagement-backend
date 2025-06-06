@@ -9,6 +9,7 @@ const {
   deleteSalesman,
   getSalesman,
   updateSalesman,
+  regenerateSalesmanPassword, // Add this line
 } = require("../controllers/salesmanController");
 
 const {
@@ -32,6 +33,7 @@ router.get("/:salesmanId/clients", getClientsBySalesman);
 router.delete("/:salesmanId", deleteSalesman);
 router.get("/:salesmanId", getSalesman);
 router.patch("/:salesmanId", updateSalesman);
+router.patch("/:salesmanId/regenerate-password", regenerateSalesmanPassword);
 // This route is now handled in companyRoutes.js
 // Removing to avoid route conflict
 

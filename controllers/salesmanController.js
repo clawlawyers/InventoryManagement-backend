@@ -245,6 +245,37 @@ const updateSalesman = async (req, res) => {
   }
 };
 
+const regenerateSalesmanPassword = async (req, res) => {
+  try {
+    const { salesmanId } = req.params;
+
+    const salesman = await Salesman.findById(salesmanId);
+    if (!salesman) {
+      return res.status(404).json({ message: "Salesman not found" });
+    }
+
+    const newPassword = generatePassword();
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    salesman.password = hashedNewPassword;
+    await salesman.save();
+
+    res.json({
+      message: "Password regenerated successfully",
+      salesman: {
+        _id: salesman._id,
+        user_id: salesman.user_id,
+        name: salesman.name,
+        newPassword: newPassword, // Return the unhashed new password
+      },
+    });
+  } catch (err) {
+    console.error("Error regenerating password:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createSalesman,
   getAllSalesmen,
@@ -254,4 +285,5 @@ module.exports = {
   deleteSalesman,
   getSalesman,
   updateSalesman,
+  regenerateSalesmanPassword,
 };
