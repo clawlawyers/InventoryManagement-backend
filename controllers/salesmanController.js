@@ -140,6 +140,7 @@ const createSalesman = async (req, res) => {
         phone: salesman.phone,
         user_id: salesman.user_id,
         user_type: salesman.user_type,
+        password: password, // Include the unhashed password
       },
     });
   } catch (err) {
