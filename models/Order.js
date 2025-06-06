@@ -106,6 +106,25 @@ const OrderSchema = new Schema({
     type: Date,
     required: false,
   },
+  discountPercentage: {
+    type: Number,
+    required: false,
+    min: 0,
+    max: 100,
+    default: 0,
+  },
+  discountValue: {
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0,
+  },
+  gst: {
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0,
+  },
   // Array to store payment references
   payments: [
     {

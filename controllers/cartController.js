@@ -434,7 +434,14 @@ const clearCart = async (req, res) => {
 const checkoutCart = async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { paymentDueDate, cartItems, companyId } = req.body;
+    const {
+      paymentDueDate,
+      cartItems,
+      companyId,
+      discountPercentage,
+      discountValue,
+      gst,
+    } = req.body;
     const { user, type } = req.user || {
       user: { _id: "507f1f77bcf86cd799439011" }, // Default test user ID
       type: "manager",
@@ -523,6 +530,19 @@ const checkoutCart = async (req, res) => {
       totalAmount += totalPrice;
     }
 
+    // Apply discount
+    let finalAmount = totalAmount;
+    if (discountPercentage && discountPercentage > 0) {
+      finalAmount = totalAmount * (1 - discountPercentage / 100);
+    } else if (discountValue && discountValue > 0) {
+      finalAmount = totalAmount - discountValue;
+    }
+
+    // Apply GST
+    if (gst && gst > 0) {
+      finalAmount = finalAmount * (1 + gst / 100);
+    }
+
     // Create order
     const order = new Order({
       products: orderProducts,
@@ -530,9 +550,12 @@ const checkoutCart = async (req, res) => {
       company: companyId,
       createdBy: user._id,
       creatorType: type === "manager" ? "Manager" : "SalesmanTextile",
-      totalAmount: totalAmount,
+      totalAmount: finalAmount, // Use finalAmount after discounts and GST
       paymentDueDate:
         paymentDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+      discountPercentage: discountPercentage || 0,
+      discountValue: discountValue || 0,
+      gst: gst || 0,
     });
 
     await order.save();
