@@ -3,6 +3,10 @@ const { requireAuth } = require("../middleware/requireAuth");
 const {
   createInventory,
   getProductByProductId,
+  downloadInventoryCSV,
+  downloadInventoryPDF,
+  downloadProductCSV,
+  downloadProductPDF,
 } = require("../controllers/inventoryController");
 const {
   createInventoryProduct,
@@ -29,5 +33,11 @@ router.delete(
 );
 
 router.get("/getInventoryName/:inventoryId", requireAuth, getInventoryName);
+
+// Download routes
+router.get("/:id/download/csv", requireAuth, downloadInventoryCSV);
+router.get("/:id/download/pdf", requireAuth, downloadInventoryPDF);
+router.get("/product/:productId/download/csv", requireAuth, downloadProductCSV);
+router.get("/product/:productId/download/pdf", requireAuth, downloadProductPDF);
 
 module.exports = router;

@@ -619,7 +619,386 @@ const generateOrderInvoicePDF = async (order) => {
   });
 };
 
+// Generate PDF for inventory with all products
+const generateInventoryPDF = async (inventory, products, company) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log(
+        `📄 Starting PDF generation for inventory ${inventory.inventoryName}`
+      );
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+        bufferPages: true,
+      });
+
+      // Collect PDF data in memory
+      const chunks = [];
+
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+
+      doc.on("end", () => {
+        console.log("✅ Inventory PDF generated successfully in memory");
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve({
+          buffer: pdfBuffer,
+          filename: `inventory_${inventory.inventoryName.replace(
+            /[^a-zA-Z0-9]/g,
+            "_"
+          )}_${Date.now()}.pdf`,
+          size: pdfBuffer.length,
+        });
+      });
+
+      doc.on("error", (error) => {
+        console.error("❌ PDF document error:", error);
+        reject(error);
+      });
+
+      // Header
+      doc
+        .fontSize(20)
+        .font("Helvetica-Bold")
+        .text("INVENTORY REPORT", { align: "center" });
+      doc.moveDown(2);
+
+      // Company details
+      if (company) {
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .text("COMPANY DETAILS:", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12).font("Helvetica");
+        doc.text(`Company: ${company.name || "N/A"}`, { lineGap: 4 });
+        doc.text(`Address: ${company.address || "N/A"}`, { lineGap: 4 });
+        if (company.GSTNumber) {
+          doc.text(`GST Number: ${company.GSTNumber}`, { lineGap: 4 });
+        }
+        doc.moveDown(1.5);
+      }
+
+      // Inventory details
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("INVENTORY DETAILS:", { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica");
+      doc.text(`Inventory Name: ${inventory.inventoryName}`, { lineGap: 4 });
+      doc.text(`Total Products: ${products.length}`, { lineGap: 4 });
+      doc.text(`Generated On: ${new Date().toLocaleDateString()}`, {
+        lineGap: 4,
+      });
+      doc.moveDown(2);
+
+      // Products table header
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("PRODUCTS:", { underline: true });
+      doc.moveDown(1);
+
+      // Table headers
+      const tableTop = doc.y;
+      const bailNumberX = 50;
+      const designCodeX = 130;
+      const categoryX = 210;
+      const lotNumberX = 290;
+      const stockX = 370;
+      const priceX = 430;
+      const dateX = 490;
+
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text("Bail No.", bailNumberX, tableTop, { width: 70, lineGap: 2 });
+      doc.text("Design", designCodeX, tableTop, { width: 70, lineGap: 2 });
+      doc.text("Category", categoryX, tableTop, { width: 70, lineGap: 2 });
+      doc.text("Lot No.", lotNumberX, tableTop, { width: 70, lineGap: 2 });
+      doc.text("Stock", stockX, tableTop, { width: 50, lineGap: 2 });
+      doc.text("Price", priceX, tableTop, { width: 50, lineGap: 2 });
+      doc.text("Date", dateX, tableTop, { width: 60, lineGap: 2 });
+
+      // Draw line under headers
+      doc
+        .moveTo(bailNumberX, tableTop + 22)
+        .lineTo(dateX + 60, tableTop + 22)
+        .stroke();
+
+      let currentY = tableTop + 35;
+
+      // Products data
+      if (products && products.length > 0) {
+        doc.fontSize(9).font("Helvetica");
+
+        products.forEach((product, index) => {
+          // Check if we need a new page
+          if (currentY > 700) {
+            doc.addPage();
+            currentY = 50;
+
+            // Redraw headers on new page
+            doc.fontSize(10).font("Helvetica-Bold");
+            doc.text("Bail No.", bailNumberX, currentY, {
+              width: 70,
+              lineGap: 2,
+            });
+            doc.text("Design", designCodeX, currentY, {
+              width: 70,
+              lineGap: 2,
+            });
+            doc.text("Category", categoryX, currentY, {
+              width: 70,
+              lineGap: 2,
+            });
+            doc.text("Lot No.", lotNumberX, currentY, {
+              width: 70,
+              lineGap: 2,
+            });
+            doc.text("Stock", stockX, currentY, { width: 50, lineGap: 2 });
+            doc.text("Price", priceX, currentY, { width: 50, lineGap: 2 });
+            doc.text("Date", dateX, currentY, { width: 60, lineGap: 2 });
+
+            doc
+              .moveTo(bailNumberX, currentY + 22)
+              .lineTo(dateX + 60, currentY + 22)
+              .stroke();
+
+            currentY += 35;
+            doc.fontSize(9).font("Helvetica");
+          }
+
+          // Bail Number
+          doc.text(product.bail_number || "N/A", bailNumberX, currentY, {
+            width: 70,
+            lineGap: 3,
+          });
+
+          // Design Code
+          doc.text(product.design_code || "N/A", designCodeX, currentY, {
+            width: 70,
+            lineGap: 3,
+          });
+
+          // Category Code
+          doc.text(product.category_code || "N/A", categoryX, currentY, {
+            width: 70,
+            lineGap: 3,
+          });
+
+          // Lot Number
+          doc.text(product.lot_number || "N/A", lotNumberX, currentY, {
+            width: 70,
+            lineGap: 3,
+          });
+
+          // Stock Amount
+          doc.text((product.stock_amount || 0).toString(), stockX, currentY, {
+            width: 50,
+            lineGap: 3,
+          });
+
+          // Price
+          doc.text(`₹${(product.price || 0).toFixed(2)}`, priceX, currentY, {
+            width: 50,
+            lineGap: 3,
+          });
+
+          // Date
+          doc.text(
+            product.bail_date
+              ? new Date(product.bail_date).toLocaleDateString()
+              : "N/A",
+            dateX,
+            currentY,
+            { width: 60, lineGap: 3 }
+          );
+
+          currentY += 25;
+        });
+      } else {
+        doc.text("No products found in this inventory", bailNumberX, currentY);
+      }
+
+      // Summary section
+      currentY += 30;
+      doc.fontSize(12).font("Helvetica-Bold");
+      doc.text("SUMMARY:", 50, currentY);
+      currentY += 20;
+
+      doc.fontSize(11).font("Helvetica");
+      const totalStock = products.reduce(
+        (sum, product) => sum + (product.stock_amount || 0),
+        0
+      );
+      const totalValue = products.reduce(
+        (sum, product) =>
+          sum + (product.price || 0) * (product.stock_amount || 0),
+        0
+      );
+
+      doc.text(`Total Products: ${products.length}`, 50, currentY);
+      currentY += 15;
+      doc.text(`Total Stock: ${totalStock}`, 50, currentY);
+      currentY += 15;
+      doc.text(
+        `Total Inventory Value: ₹${totalValue.toFixed(2)}`,
+        50,
+        currentY
+      );
+
+      // Footer
+      currentY += 40;
+      doc.fontSize(10).font("Helvetica");
+      doc.text("Generated by Inventory Management System", 50, currentY, {
+        align: "center",
+        width: 500,
+        lineGap: 5,
+      });
+
+      // Finalize PDF
+      doc.end();
+      console.log("✅ Inventory PDF finalized");
+    } catch (error) {
+      console.error("❌ Error generating inventory PDF:", error);
+      reject(error);
+    }
+  });
+};
+
+// Generate PDF for single product
+const generateProductPDF = async (product) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log(
+        `📄 Starting PDF generation for product ${product.bail_number}`
+      );
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+        bufferPages: true,
+      });
+
+      // Collect PDF data in memory
+      const chunks = [];
+
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+
+      doc.on("end", () => {
+        console.log("✅ Product PDF generated successfully in memory");
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve({
+          buffer: pdfBuffer,
+          filename: `product_${product.bail_number.replace(
+            /[^a-zA-Z0-9]/g,
+            "_"
+          )}_${Date.now()}.pdf`,
+          size: pdfBuffer.length,
+        });
+      });
+
+      doc.on("error", (error) => {
+        console.error("❌ PDF document error:", error);
+        reject(error);
+      });
+
+      // Header
+      doc
+        .fontSize(20)
+        .font("Helvetica-Bold")
+        .text("PRODUCT DETAILS", { align: "center" });
+      doc.moveDown(3);
+
+      // Product details in a structured format
+      const details = [
+        { label: "Bail Number:", value: product.bail_number || "N/A" },
+        { label: "Design Code:", value: product.design_code || "N/A" },
+        { label: "Category Code:", value: product.category_code || "N/A" },
+        { label: "Lot Number:", value: product.lot_number || "N/A" },
+        {
+          label: "Stock Amount:",
+          value: (product.stock_amount || 0).toString(),
+        },
+        { label: "Price:", value: `₹${(product.price || 0).toFixed(2)}` },
+        {
+          label: "Bail Date:",
+          value: product.bail_date
+            ? new Date(product.bail_date).toLocaleDateString()
+            : "N/A",
+        },
+        {
+          label: "Total Value:",
+          value: `₹${(
+            (product.price || 0) * (product.stock_amount || 0)
+          ).toFixed(2)}`,
+        },
+      ];
+
+      // Draw product details
+      let currentY = doc.y;
+      doc.fontSize(14).font("Helvetica-Bold");
+
+      details.forEach((detail) => {
+        // Label
+        doc.text(detail.label, 50, currentY, { width: 150 });
+
+        // Value
+        doc.font("Helvetica").text(detail.value, 220, currentY, { width: 300 });
+
+        currentY += 30;
+        doc.font("Helvetica-Bold");
+      });
+
+      // Add some spacing
+      currentY += 20;
+
+      // Additional information section
+      doc.fontSize(16).font("Helvetica-Bold");
+      doc.text("ADDITIONAL INFORMATION", 50, currentY);
+      currentY += 30;
+
+      doc.fontSize(12).font("Helvetica");
+      doc.text(
+        `Generated On: ${new Date().toLocaleDateString()}`,
+        50,
+        currentY
+      );
+      currentY += 20;
+      doc.text(
+        `Generated At: ${new Date().toLocaleTimeString()}`,
+        50,
+        currentY
+      );
+
+      // Footer
+      currentY += 60;
+      doc.fontSize(10).font("Helvetica");
+      doc.text("Generated by Inventory Management System", 50, currentY, {
+        align: "center",
+        width: 500,
+        lineGap: 5,
+      });
+
+      // Finalize PDF
+      doc.end();
+      console.log("✅ Product PDF finalized");
+    } catch (error) {
+      console.error("❌ Error generating product PDF:", error);
+      reject(error);
+    }
+  });
+};
+
 module.exports = {
   generateInvoicePDF,
   generateOrderInvoicePDF,
+  generateInventoryPDF,
+  generateProductPDF,
 };
