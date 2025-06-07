@@ -160,7 +160,7 @@ const salesmanLogin = async (req, res) => {
         },
       });
 
-    if (!salesman || salesman.password !== password) {
+    if (!salesman || !(await bcrypt.compare(password, salesman.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
