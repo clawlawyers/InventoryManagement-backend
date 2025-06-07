@@ -1,6 +1,7 @@
 const Client = require("../models/Client");
 const Salesman = require("../models/Salesman");
 const Manager = require("../models/Manager");
+const Order = require("../models/Order");
 
 // Create a new client
 const createClient = async (req, res) => {
@@ -146,14 +147,22 @@ const updateClient = async (req, res) => {
 // Delete client
 const deleteClient = async (req, res) => {
   try {
+    // First delete all orders associated with the client
+    const deletedOrders = await Order.deleteMany({ client: req.params.id });
+
+    // Then delete the client
     const client = await Client.findByIdAndDelete(req.params.id);
     if (!client) {
       return res.status(404).json({ message: "Client not found" });
     }
 
-    res.json({ message: "Client deleted successfully", client });
+    res.json({
+      message: "Client and associated orders deleted successfully",
+      client,
+      deletedOrdersCount: deletedOrders.deletedCount,
+    });
   } catch (err) {
-    console.error("Error deleting client:", err);
+    console.error("Error deleting client and orders:", err);
     res.status(500).json({ message: err.message });
   }
 };

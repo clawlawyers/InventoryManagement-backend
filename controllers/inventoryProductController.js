@@ -1,3 +1,4 @@
+const Client = require("../models/Client");
 const { create } = require("../models/Client");
 const Inventory = require("../models/Inventory");
 const InventoryProduct = require("../models/InventoryProduct");
@@ -171,10 +172,37 @@ const deleteInventoryProduct = async (req, res) => {
     );
     await inventory.save();
 
-    // Delete the product
+    // ⚠️ Delete the product from all client carts
+    const clients = await Client.find({
+      "cart.items.inventoryProduct": productId,
+    });
+
+    for (const client of clients) {
+      // Filter out the deleted product
+      client.cart.items = client.cart.items.filter(
+        (item) => item.inventoryProduct.toString() !== productId
+      );
+
+      // Recalculate totalItems and totalAmount
+      client.cart.totalItems = client.cart.items.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+      client.cart.totalAmount = client.cart.items.reduce(
+        (sum, item) => sum + item.totalPrice,
+        0
+      );
+      client.cart.updatedAt = new Date();
+
+      await client.save();
+    }
+
+    // Optionally delete the product (if you actually want to remove it from DB)
     // await InventoryProduct.findByIdAndDelete(productId);
 
-    res.json({ message: "Product deleted successfully" });
+    res.json({
+      message: "Product deleted successfully and removed from all carts",
+    });
   } catch (err) {
     console.error("Error deleting product:", err);
     res.status(500).json({ message: err.message });

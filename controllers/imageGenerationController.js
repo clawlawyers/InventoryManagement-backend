@@ -32,6 +32,7 @@ const forwardToImageService = async (endpoint, formData) => {
         headers: {
           ...formData.getHeaders(),
         },
+        timeout: 300000, // Timeout in milliseconds (e.g., 60000 = 60 seconds)
       }
     );
     return { success: true, data: response.data };
