@@ -552,11 +552,98 @@ const deleteOrder = async (req, res) => {
   }
 };
 
+// Generate custom invoice with custom data
+const generateCustomInvoice = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { user, type } = req.user;
+    const customData = req.body;
+
+    // Validate orderId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    // Find the order with all necessary populated data
+    const order = await Order.findById(orderId)
+      .populate("client", "name phone firmName firmGSTNumber address")
+      .populate("company", "name address GSTNumber")
+      .populate("createdBy", "name email phone")
+      .populate({
+        path: "products.inventoryProduct",
+        select:
+          "bail_number design_code category_code lot_number stock_amount price",
+      });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check authorization - only allow access to orders the user can view
+    if (
+      type === "salesman" &&
+      order.createdBy._id.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You can only generate invoices for orders you created",
+      });
+    }
+
+    // Create custom order object with overrides
+    const customOrder = {
+      ...order.toObject(),
+      // Override with custom data if provided
+      ...(customData.companyDetails && { company: customData.companyDetails }),
+      ...(customData.clientDetails && { client: customData.clientDetails }),
+      ...(customData.customProducts && { products: customData.customProducts }),
+      ...(customData.totalAmount && { totalAmount: customData.totalAmount }),
+      ...(customData.paidAmount && { paidAmount: customData.paidAmount }),
+      ...(customData.dueAmount && { dueAmount: customData.dueAmount }),
+      ...(customData.paymentStatus && {
+        paymentStatus: customData.paymentStatus,
+      }),
+      ...(customData.notes && { notes: customData.notes }),
+      ...(customData.terms && { terms: customData.terms }),
+      ...(customData.invoiceNumber && {
+        invoiceNumber: customData.invoiceNumber,
+      }),
+      ...(customData.invoiceDate && { invoiceDate: customData.invoiceDate }),
+      // Allow custom status for invoice generation
+      status: customData.forceGenerate ? "completed" : order.status,
+    };
+
+    // Generate PDF in memory using custom data
+    console.log(`📄 Generating custom invoice for order ${orderId}`);
+    const { buffer, filename, size } = await generateOrderInvoicePDF(
+      customOrder
+    );
+
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", size);
+
+    // Send the PDF buffer directly to response
+    console.log(
+      `✅ Custom PDF invoice generated and sent successfully for order ${orderId} (${size} bytes)`
+    );
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error generating custom invoice:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderById,
   getAllOrdersByClientId,
   generateOrderInvoice,
+  generateCustomInvoice,
   deleteOrder,
 };
