@@ -10,6 +10,7 @@ const authRoutes = require("./authRoutes");
 const inventoryRoutes = require("./inventoryRoutes");
 const uploadRoute = require("./uploadRoute");
 const orderRoutes = require("./orderRoutes");
+const customOrderRoutes = require("./customOrderRoutes"); // Import custom order routes
 const cartRoutes = require("./cartRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const imageGenerationRoutes = require("./imageGeneration");
@@ -25,6 +26,7 @@ router.use("/clients", clientRoutes);
 router.use("/inventory", inventoryRoutes);
 router.use("/upload", uploadRoute);
 router.use("/orders", orderRoutes);
+router.use("/custom-orders", customOrderRoutes); // Use custom order routes
 router.use("/cart", cartRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/genImg", imageGenerationRoutes);
