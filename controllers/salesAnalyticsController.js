@@ -326,7 +326,7 @@ const getOrderPaymentStats = async (req, res) => {
 // Get cumulative stock and order statistics
 const getCumulativeStockStats = async (req, res) => {
   try {
-    const { companyId } = req.query;
+    const { companyId, startDate, endDate, productId, designCode } = req.query;
 
     if (!companyId) {
       return res.status(400).json({
@@ -338,6 +338,30 @@ const getCumulativeStockStats = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(companyId)) {
       return res.status(400).json({
         message: "Invalid Company ID format",
+      });
+    }
+
+    let start = startDate ? new Date(startDate) : new Date();
+    let end = endDate ? new Date(endDate) : new Date();
+
+    if (!startDate) {
+      start.setDate(1); // Default to the first day of the current month
+      start.setHours(0, 0, 0, 0);
+    }
+    if (!endDate) {
+      end.setMonth(end.getMonth() + 1, 0); // Default to the last day of the current month
+    }
+    end.setHours(23, 59, 59, 999); // End of the day
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        message: "Invalid startDate or endDate format",
+      });
+    }
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        message: "Invalid startDate or endDate format",
       });
     }
 
@@ -365,88 +389,174 @@ const getCumulativeStockStats = async (req, res) => {
       });
     }
 
-    const inventoryProducts = company.inventory.products || [];
-    console.log("Found inventory products:", inventoryProducts.length);
+    let inventoryProducts = company.inventory.products || [];
+    let targetProductId = null;
 
-    // Get all orders for the company
-    const orders = await Order.find({
+    // Handle productId (bail_number) or designCode filtering
+    if (productId) {
+      const productByBailNumber = inventoryProducts.find(
+        (p) => p && p.bail_number === productId
+      );
+      if (!productByBailNumber) {
+        return res
+          .status(404)
+          .json({ message: "Product with provided bail number not found" });
+      }
+      inventoryProducts = [productByBailNumber]; // Filter to only this product
+      targetProductId = productByBailNumber._id;
+    } else if (designCode) {
+      inventoryProducts = inventoryProducts.filter(
+        (p) => p && p.design_code === designCode
+      );
+    }
+
+    console.log(
+      "Found inventory products (filtered):",
+      inventoryProducts.length
+    );
+
+    const orderMatchQuery = {
       company: mongoose.Types.ObjectId.createFromHexString(companyId),
+    };
+
+    if (targetProductId) {
+      // Use the found _id for filtering orders
+      orderMatchQuery["products.inventoryProduct"] = targetProductId;
+    } else if (designCode) {
+      // If filtering by designCode, we need to ensure orders only contain products of that design.
+      // This is handled by filtering `inventoryProducts` first, and then the loops will naturally
+      // only consider relevant products. No direct orderMatchQuery filter by designCode is needed here.
+    }
+
+    // Get all orders for the company within the specified date range
+    const orders = await Order.find({
+      ...orderMatchQuery,
+      createdAt: { $gte: start, $lte: end },
     }).populate("products.inventoryProduct");
 
-    console.log("Found orders:", orders.length);
+    // Get all orders before the start date to calculate initial stock
+    const ordersBeforeStart = await Order.find({
+      ...orderMatchQuery,
+      createdAt: { $lt: start },
+    }).populate("products.inventoryProduct");
+
+    console.log("Found orders within range:", orders.length);
+    console.log("Found orders before start date:", ordersBeforeStart.length);
 
     // Initialize overall stats
+    const stockTimeSeries = []; // To store stock data by 3-day intervals
+
+    // Calculate initial total stock and value for the filtered products at the start date
+    let currentOverallStock = 0;
+    let currentOverallStockValue = 0;
+
+    for (const product of inventoryProducts) {
+      if (!product) continue;
+
+      let productInitialStock = product.stock_amount;
+      let productInitialStockValue = product.stock_amount * product.price;
+
+      // Subtract quantities from orders placed before the start date for this specific product
+      ordersBeforeStart.forEach((order) => {
+        if (!order || !order.products) return;
+        const orderProduct = order.products.find(
+          (p) =>
+            p &&
+            p.inventoryProduct !== null &&
+            p.inventoryProduct._id &&
+            p.inventoryProduct._id.toString() === product._id.toString()
+        );
+        if (orderProduct) {
+          productInitialStock -= orderProduct.quantity;
+          productInitialStockValue -= orderProduct.totalPrice;
+        }
+      });
+      currentOverallStock += productInitialStock;
+      currentOverallStockValue += productInitialStockValue;
+    }
+
+    // Initialize overall stats with the calculated initial stock
     const overallStats = {
       totalProducts: inventoryProducts.length,
-      totalStock: 0,
-      totalStockValue: 0,
-      totalOrders: 0,
+      totalStock: currentOverallStock,
+      totalStockValue: currentOverallStockValue,
+      totalOrders: orders.length, // Only orders within the range
       totalOrderedQuantity: 0,
       totalOrderValue: 0,
     };
 
-    const productStats = [];
+    // Process orders within the date range and build time series
+    let currentDate = new Date(start);
+    while (currentDate <= end) {
+      const intervalEnd = new Date(currentDate);
+      intervalEnd.setDate(intervalEnd.getDate() + 2); // 3-day interval (current day + 2 more days)
+      intervalEnd.setHours(23, 59, 59, 999); // End of the day for the interval
 
-    // Process each product
-    for (const product of inventoryProducts) {
-      if (!product) {
-        console.log("Skipping null product");
-        continue;
-      }
-      console.log("Processing product:", {
-        id: product._id,
-        bail: product.bail_number,
-        design: product.design_code,
-        stock: product.stock_amount,
-        price: product.price,
-        stockValue: product.stock_amount * product.price,
-      });
+      let orderedQuantityInInterval = 0;
+      let orderedValueInInterval = 0;
 
-      let productOrderedQuantity = 0;
-      let productOrderedValue = 0;
-
-      // Calculate orders for this product
       orders.forEach((order) => {
-        if (!order || !order.products) return;
+        if (
+          order.createdAt >= currentDate &&
+          order.createdAt <= intervalEnd &&
+          order.createdAt <= end // Ensure we don't go past the overall end date
+        ) {
+          order.products.forEach((p) => {
+            if (p && p.inventoryProduct !== null && p.inventoryProduct._id) {
+              // Check if this product is part of the filtered inventoryProducts
+              const isRelevantProduct = inventoryProducts.some(
+                (invProd) =>
+                  invProd._id.toString() === p.inventoryProduct._id.toString()
+              );
 
-        const orderProduct = order.products.find(
-          (p) =>
-            p &&
-            p.inventoryProduct &&
-            p.inventoryProduct._id &&
-            p.inventoryProduct._id.toString() === product._id.toString()
-        );
-
-        if (orderProduct) {
-          productOrderedQuantity += orderProduct.quantity;
-          productOrderedValue += orderProduct.totalPrice;
+              if (isRelevantProduct) {
+                orderedQuantityInInterval += p.quantity;
+                orderedValueInInterval += p.totalPrice;
+              }
+            }
+          });
         }
       });
 
-      overallStats.totalStock += product.stock_amount;
-      overallStats.totalStockValue += product.stock_amount * product.price;
-      overallStats.totalOrderedQuantity += productOrderedQuantity;
-      overallStats.totalOrderValue += productOrderedValue;
+      currentOverallStock -= orderedQuantityInInterval;
+      currentOverallStockValue -= orderedValueInInterval;
 
-      productStats.push({
-        _id: product._id,
-        bail_number: product.bail_number,
-        design_code: product.design_code,
-        category_code: product.category_code,
-        stock_amount: product.stock_amount,
-        price: product.price,
-        stock_value: product.stock_amount * product.price,
-        ordered_quantity: productOrderedQuantity,
-        ordered_value: productOrderedValue,
+      overallStats.totalOrderedQuantity += orderedQuantityInInterval;
+      overallStats.totalOrderValue += orderedValueInInterval;
+
+      stockTimeSeries.push({
+        date: currentDate.toISOString().split("T")[0], // YYYY-MM-DD
+        total_remaining_stock: currentOverallStock,
+        total_remaining_stock_value: currentOverallStockValue,
       });
+
+      currentDate.setDate(currentDate.getDate() + 3); // Move to the next 3-day interval
     }
 
-    overallStats.totalOrders = orders.length;
+    const monthStartStock = overallStats.totalStock;
+    const monthStartStockValue = overallStats.totalStockValue;
+    const monthEndStock =
+      stockTimeSeries.length > 0
+        ? stockTimeSeries[stockTimeSeries.length - 1].total_remaining_stock
+        : monthStartStock;
+    const monthEndStockValue =
+      stockTimeSeries.length > 0
+        ? stockTimeSeries[stockTimeSeries.length - 1]
+            .total_remaining_stock_value
+        : monthStartStockValue;
 
     res.json({
       message: "Cumulative stock statistics retrieved successfully",
       stats: overallStats,
-      productStats: productStats,
+      stockTimeSeries: stockTimeSeries,
+      monthlyValues: {
+        startDate: start.toISOString().split("T")[0],
+        endDate: end.toISOString().split("T")[0],
+        monthStartStock,
+        monthStartStockValue,
+        monthEndStock,
+        monthEndStockValue,
+      },
     });
   } catch (error) {
     console.error("Error fetching cumulative stock statistics:", error);
