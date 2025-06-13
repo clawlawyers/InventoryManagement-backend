@@ -15,7 +15,10 @@ const getProductSalesAnalytics = async (req, res) => {
     }
 
     // Validate ObjectIds
-    if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(companyId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(productId) ||
+      !mongoose.Types.ObjectId.isValid(companyId)
+    ) {
       return res.status(400).json({
         message: "Invalid Product ID or Company ID format",
       });
@@ -36,22 +39,28 @@ const getProductSalesAnalytics = async (req, res) => {
     // Debug: Check if there are any orders for this product and company
     const orderCount = await Order.countDocuments({
       company: new mongoose.Types.ObjectId(companyId),
-      "products.inventoryProduct": new mongoose.Types.ObjectId(productId)
+      "products.inventoryProduct": new mongoose.Types.ObjectId(productId),
     });
-    console.log(`Found ${orderCount} orders for product ${productId} in company ${companyId}`);
+    console.log(
+      `Found ${orderCount} orders for product ${productId} in company ${companyId}`
+    );
 
     if (orderCount === 0) {
       return res.json({
         message: "No orders found for this product in this company",
         salesData: [],
-        totals: { totalQuantity: 0, totalAmount: 0, totalOrders: 0 }
+        totals: { totalQuantity: 0, totalAmount: 0, totalOrders: 0 },
       });
     }
 
     const salesData = await Order.aggregate([
       { $match: matchQuery },
       { $unwind: "$products" },
-      { $match: { "products.inventoryProduct": new mongoose.Types.ObjectId(productId) } },
+      {
+        $match: {
+          "products.inventoryProduct": new mongoose.Types.ObjectId(productId),
+        },
+      },
       {
         $group: {
           _id: {
@@ -139,20 +148,27 @@ const getAllProductsSalesAnalytics = async (req, res) => {
     }
 
     // Debug: First check if there are any orders for this company
-    const orderCount = await Order.countDocuments({ company: new mongoose.Types.ObjectId(companyId) });
+    const orderCount = await Order.countDocuments({
+      company: new mongoose.Types.ObjectId(companyId),
+    });
     console.log(`Found ${orderCount} orders for company ${companyId}`);
 
     if (orderCount === 0) {
       return res.json({
         message: "No orders found for this company",
         salesData: [],
-        totals: { totalQuantity: 0, totalAmount: 0, totalOrders: 0 }
+        totals: { totalQuantity: 0, totalAmount: 0, totalOrders: 0 },
       });
     }
 
     // Debug: Get a sample order to check its structure
-    const sampleOrder = await Order.findOne({ company: new mongoose.Types.ObjectId(companyId) });
-    console.log('Sample order structure:', JSON.stringify(sampleOrder, null, 2));
+    const sampleOrder = await Order.findOne({
+      company: new mongoose.Types.ObjectId(companyId),
+    });
+    console.log(
+      "Sample order structure:",
+      JSON.stringify(sampleOrder, null, 2)
+    );
 
     const salesData = await Order.aggregate([
       { $match: matchQuery },
@@ -189,7 +205,7 @@ const getAllProductsSalesAnalytics = async (req, res) => {
       },
     ]);
 
-    console.log('Aggregation result:', JSON.stringify(salesData, null, 2));
+    console.log("Aggregation result:", JSON.stringify(salesData, null, 2));
 
     // Calculate overall totals
     const totals = salesData.reduce(
@@ -277,16 +293,16 @@ const getOrderPaymentStats = async (req, res) => {
       totalAmount: 0,
       totalDueAmount: 0,
       totalPaidAmount: 0,
-      byStatus: {}
+      byStatus: {},
     };
 
     // Process payment stats
-    paymentStats.forEach(stat => {
+    paymentStats.forEach((stat) => {
       summary.byStatus[stat.paymentStatus] = {
         count: stat.count,
         totalAmount: stat.totalAmount,
         dueAmount: stat.dueAmount,
-        paidAmount: stat.paidAmount
+        paidAmount: stat.paidAmount,
       };
       summary.totalAmount += stat.totalAmount;
       summary.totalDueAmount += stat.dueAmount;
@@ -296,7 +312,7 @@ const getOrderPaymentStats = async (req, res) => {
     res.json({
       message: "Order payment statistics retrieved successfully",
       summary,
-      detailedStats: paymentStats
+      detailedStats: paymentStats,
     });
   } catch (error) {
     console.error("Error fetching order payment statistics:", error);
@@ -326,37 +342,38 @@ const getCumulativeStockStats = async (req, res) => {
     }
 
     // Get all inventory products for the company
-    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
-      .populate({
-        path: 'inventory',
-        populate: {
-          path: 'products'
-        }
-      });
+    const company = await Company.findById(
+      mongoose.Types.ObjectId.createFromHexString(companyId)
+    ).populate({
+      path: "inventory",
+      populate: {
+        path: "products",
+      },
+    });
 
-    console.log('Company found:', company ? 'yes' : 'no');
+    console.log("Company found:", company ? "yes" : "no");
     if (!company) {
       return res.status(404).json({
-        message: "Company not found"
+        message: "Company not found",
       });
     }
 
-    console.log('Inventory found:', company.inventory ? 'yes' : 'no');
+    console.log("Inventory found:", company.inventory ? "yes" : "no");
     if (!company.inventory) {
       return res.status(404).json({
-        message: "Inventory not found for this company"
+        message: "Inventory not found for this company",
       });
     }
 
     const inventoryProducts = company.inventory.products || [];
-    console.log('Found inventory products:', inventoryProducts.length);
+    console.log("Found inventory products:", inventoryProducts.length);
 
     // Get all orders for the company
     const orders = await Order.find({
-      company: mongoose.Types.ObjectId.createFromHexString(companyId)
-    }).populate('products.inventoryProduct');
+      company: mongoose.Types.ObjectId.createFromHexString(companyId),
+    }).populate("products.inventoryProduct");
 
-    console.log('Found orders:', orders.length);
+    console.log("Found orders:", orders.length);
 
     // Initialize overall stats
     const overallStats = {
@@ -365,48 +382,71 @@ const getCumulativeStockStats = async (req, res) => {
       totalStockValue: 0,
       totalOrders: 0,
       totalOrderedQuantity: 0,
-      totalOrderValue: 0
+      totalOrderValue: 0,
     };
+
+    const productStats = [];
 
     // Process each product
     for (const product of inventoryProducts) {
       if (!product) {
-        console.log('Skipping null product');
+        console.log("Skipping null product");
         continue;
       }
-      console.log('Processing product:', {
+      console.log("Processing product:", {
         id: product._id,
         bail: product.bail_number,
+        design: product.design_code,
         stock: product.stock_amount,
         price: product.price,
-        stockValue: product.stock_amount * product.price
+        stockValue: product.stock_amount * product.price,
       });
 
+      let productOrderedQuantity = 0;
+      let productOrderedValue = 0;
+
       // Calculate orders for this product
-      orders.forEach(order => {
+      orders.forEach((order) => {
         if (!order || !order.products) return;
-        
-        const orderProduct = order.products.find(p => 
-          p && p.inventoryProduct && 
-          p.inventoryProduct._id && 
-          p.inventoryProduct._id.toString() === product._id.toString()
+
+        const orderProduct = order.products.find(
+          (p) =>
+            p &&
+            p.inventoryProduct &&
+            p.inventoryProduct._id &&
+            p.inventoryProduct._id.toString() === product._id.toString()
         );
-        
+
         if (orderProduct) {
-          overallStats.totalOrderedQuantity += orderProduct.quantity;
-          overallStats.totalOrderValue += orderProduct.totalPrice;
+          productOrderedQuantity += orderProduct.quantity;
+          productOrderedValue += orderProduct.totalPrice;
         }
       });
 
       overallStats.totalStock += product.stock_amount;
-      overallStats.totalStockValue += (product.stock_amount * product.price);
+      overallStats.totalStockValue += product.stock_amount * product.price;
+      overallStats.totalOrderedQuantity += productOrderedQuantity;
+      overallStats.totalOrderValue += productOrderedValue;
+
+      productStats.push({
+        _id: product._id,
+        bail_number: product.bail_number,
+        design_code: product.design_code,
+        category_code: product.category_code,
+        stock_amount: product.stock_amount,
+        price: product.price,
+        stock_value: product.stock_amount * product.price,
+        ordered_quantity: productOrderedQuantity,
+        ordered_value: productOrderedValue,
+      });
     }
 
     overallStats.totalOrders = orders.length;
 
     res.json({
       message: "Cumulative stock statistics retrieved successfully",
-      stats: overallStats
+      stats: overallStats,
+      productStats: productStats,
     });
   } catch (error) {
     console.error("Error fetching cumulative stock statistics:", error);
@@ -436,27 +476,28 @@ const getProductWiseStockStats = async (req, res) => {
     }
 
     // Get all inventory products for the company
-    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
-      .populate({
-        path: 'inventory',
-        populate: {
-          path: 'products'
-        }
-      });
+    const company = await Company.findById(
+      mongoose.Types.ObjectId.createFromHexString(companyId)
+    ).populate({
+      path: "inventory",
+      populate: {
+        path: "products",
+      },
+    });
 
     if (!company || !company.inventory) {
       return res.status(404).json({
-        message: "Company or inventory not found"
+        message: "Company or inventory not found",
       });
     }
 
     const inventoryProducts = company.inventory.products || [];
-    console.log('Found inventory products:', inventoryProducts.length);
+    console.log("Found inventory products:", inventoryProducts.length);
 
     // Get all orders for the company
     const orders = await Order.find({
-      company: mongoose.Types.ObjectId.createFromHexString(companyId)
-    }).populate('products.inventoryProduct');
+      company: mongoose.Types.ObjectId.createFromHexString(companyId),
+    }).populate("products.inventoryProduct");
 
     // Initialize overall stats
     const overallStats = {
@@ -465,7 +506,7 @@ const getProductWiseStockStats = async (req, res) => {
       totalStockValue: 0,
       totalOrders: 0,
       totalOrderedQuantity: 0,
-      totalOrderValue: 0
+      totalOrderValue: 0,
     };
 
     // Process each product
@@ -476,15 +517,17 @@ const getProductWiseStockStats = async (req, res) => {
       let productOrderValue = 0;
 
       // Calculate orders for this product
-      orders.forEach(order => {
+      orders.forEach((order) => {
         if (!order || !order.products) return;
-        
-        const orderProduct = order.products.find(p => 
-          p && p.inventoryProduct && 
-          p.inventoryProduct._id && 
-          p.inventoryProduct._id.toString() === product._id.toString()
+
+        const orderProduct = order.products.find(
+          (p) =>
+            p &&
+            p.inventoryProduct &&
+            p.inventoryProduct._id &&
+            p.inventoryProduct._id.toString() === product._id.toString()
         );
-        
+
         if (orderProduct) {
           productOrdered += orderProduct.quantity;
           productOrderValue += orderProduct.totalPrice;
@@ -492,7 +535,7 @@ const getProductWiseStockStats = async (req, res) => {
       });
 
       overallStats.totalStock += product.stock_amount;
-      overallStats.totalStockValue += (product.stock_amount * product.price);
+      overallStats.totalStockValue += product.stock_amount * product.price;
       overallStats.totalOrderedQuantity += productOrdered;
       overallStats.totalOrderValue += productOrderValue;
     }
@@ -501,7 +544,7 @@ const getProductWiseStockStats = async (req, res) => {
 
     res.json({
       message: "Product-wise stock statistics retrieved successfully",
-      stats: overallStats
+      stats: overallStats,
     });
   } catch (error) {
     console.error("Error fetching product-wise stock statistics:", error);
@@ -531,27 +574,28 @@ const getDesignWiseStockStats = async (req, res) => {
     }
 
     // Get all inventory products for the company
-    const company = await Company.findById(mongoose.Types.ObjectId.createFromHexString(companyId))
-      .populate({
-        path: 'inventory',
-        populate: {
-          path: 'products'
-        }
-      });
+    const company = await Company.findById(
+      mongoose.Types.ObjectId.createFromHexString(companyId)
+    ).populate({
+      path: "inventory",
+      populate: {
+        path: "products",
+      },
+    });
 
     if (!company || !company.inventory) {
       return res.status(404).json({
-        message: "Company or inventory not found"
+        message: "Company or inventory not found",
       });
     }
 
     const inventoryProducts = company.inventory.products || [];
-    console.log('Found inventory products:', inventoryProducts.length);
+    console.log("Found inventory products:", inventoryProducts.length);
 
     // Get all orders for the company
     const orders = await Order.find({
-      company: mongoose.Types.ObjectId.createFromHexString(companyId)
-    }).populate('products.inventoryProduct');
+      company: mongoose.Types.ObjectId.createFromHexString(companyId),
+    }).populate("products.inventoryProduct");
 
     // Initialize stats
     const stats = {
@@ -560,7 +604,7 @@ const getDesignWiseStockStats = async (req, res) => {
       totalStockValue: 0,
       totalOrders: 0,
       totalOrderedQuantity: 0,
-      totalOrderValue: 0
+      totalOrderValue: 0,
     };
 
     // Track unique design codes
@@ -570,22 +614,24 @@ const getDesignWiseStockStats = async (req, res) => {
     for (const product of inventoryProducts) {
       if (!product) continue;
 
-      const designCode = product.design_code || 'Unknown';
+      const designCode = product.design_code || "Unknown";
       uniqueDesigns.add(designCode);
 
       let productOrdered = 0;
       let productOrderValue = 0;
 
       // Calculate orders for this product
-      orders.forEach(order => {
+      orders.forEach((order) => {
         if (!order || !order.products) return;
-        
-        const orderProduct = order.products.find(p => 
-          p && p.inventoryProduct && 
-          p.inventoryProduct._id && 
-          p.inventoryProduct._id.toString() === product._id.toString()
+
+        const orderProduct = order.products.find(
+          (p) =>
+            p &&
+            p.inventoryProduct &&
+            p.inventoryProduct._id &&
+            p.inventoryProduct._id.toString() === product._id.toString()
         );
-        
+
         if (orderProduct) {
           productOrdered += orderProduct.quantity;
           productOrderValue += orderProduct.totalPrice;
@@ -594,7 +640,7 @@ const getDesignWiseStockStats = async (req, res) => {
 
       // Update total stats
       stats.totalStock += product.stock_amount;
-      stats.totalStockValue += (product.stock_amount * product.price);
+      stats.totalStockValue += product.stock_amount * product.price;
       stats.totalOrderedQuantity += productOrdered;
       stats.totalOrderValue += productOrderValue;
     }
@@ -604,7 +650,7 @@ const getDesignWiseStockStats = async (req, res) => {
 
     res.json({
       message: "Design-wise stock statistics retrieved successfully",
-      stats
+      stats,
     });
   } catch (error) {
     console.error("Error fetching design-wise stock statistics:", error);
@@ -621,5 +667,5 @@ module.exports = {
   getOrderPaymentStats,
   getCumulativeStockStats,
   getProductWiseStockStats,
-  getDesignWiseStockStats
-}; 
+  getDesignWiseStockStats,
+};
