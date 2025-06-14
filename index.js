@@ -5,10 +5,17 @@ const app = express();
 
 require("dotenv").config();
 
+const corsOptions = {
+  origin: "http://localhost:5173",
+  credentials: true,
+  optionSuccessStatus: 200,
+};
+
 const routes = require("./routes/route");
+const adminRoutes = require("./routes/adminRoutes");
 
 // Enable CORS for all routes
-app.use(cors());
+app.use(cors(corsOptions));
 
 // Parse JSON request bodies
 app.use(express.json());
@@ -20,6 +27,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use("/api", routes);
+app.use("/api/admin", adminRoutes);
 
 // MongoDB connection
 mongoose
