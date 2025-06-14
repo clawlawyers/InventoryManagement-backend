@@ -356,9 +356,239 @@ const createCustomOrderPayment = async (req, res) => {
   }
 };
 
+const updateCustomOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid custom order ID." });
+    }
+
+    const customOrder = await CustomOrder.findById(orderId);
+    if (!customOrder) {
+      return res.status(404).json({ message: "Custom order not found." });
+    }
+
+    // Update fields
+    for (const key in updates) {
+      if (key === "items" && Array.isArray(updates.items)) {
+        // Handle items update with validation and recalculation
+        let subTotal = 0;
+        const processedItems = [];
+        for (let i = 0; i < updates.items.length; i++) {
+          const item = updates.items[i];
+          if (!item.itemName || !item.quantity || !item.rate) {
+            return res.status(400).json({
+              message: `Item ${
+                i + 1
+              }: itemName, quantity, and rate are required.`,
+            });
+          }
+          if (item.quantity <= 0 || item.rate < 0) {
+            return res.status(400).json({
+              message: `Item ${
+                i + 1
+              }: quantity must be positive and rate non-negative.`,
+            });
+          }
+          if (
+            item.productId &&
+            !mongoose.Types.ObjectId.isValid(item.productId)
+          ) {
+            return res
+              .status(400)
+              .json({ message: `Item ${i + 1}: Invalid productId.` });
+          }
+
+          processedItems.push({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            rate: item.rate,
+            productId: item.productId || undefined,
+          });
+          subTotal += item.quantity * item.rate;
+        }
+        customOrder.items = processedItems;
+        customOrder.subTotal = subTotal; // Store subTotal for easier recalculation
+      } else if (
+        key === "billingFrom" ||
+        key === "billingTo" ||
+        key === "billingDetails"
+      ) {
+        // Merge nested objects
+        customOrder[key] = { ...customOrder[key], ...updates[key] };
+      } else if (
+        key !== "_id" &&
+        key !== "createdAt" &&
+        key !== "updatedAt" &&
+        key !== "payments"
+      ) {
+        customOrder[key] = updates[key];
+      }
+    }
+
+    // Recalculate totalAmount and dueAmount if relevant fields changed
+    let currentSubTotal = customOrder.items.reduce(
+      (sum, item) => sum + item.quantity * item.rate,
+      0
+    );
+    let newTotalAmount = currentSubTotal;
+
+    const discountPercentage = customOrder.discountPercentage || 0;
+    const discountAmount = customOrder.discountAmount || 0;
+
+    if (discountPercentage > 0) {
+      newTotalAmount -= currentSubTotal * (discountPercentage / 100);
+    }
+    if (discountAmount > 0) {
+      newTotalAmount -= discountAmount;
+    }
+    newTotalAmount = Math.max(0, newTotalAmount);
+
+    // Adjust dueAmount based on the change in totalAmount
+    const totalAmountDifference = newTotalAmount - customOrder.totalAmount;
+    customOrder.totalAmount = newTotalAmount;
+    customOrder.dueAmount += totalAmountDifference; // Adjust dueAmount by the difference
+    customOrder.dueAmount = Math.max(0, customOrder.dueAmount); // Ensure dueAmount is not negative
+
+    // Update status if dueAmount becomes zero
+    if (customOrder.dueAmount === 0 && customOrder.status !== "completed") {
+      customOrder.status = "completed";
+    } else if (
+      customOrder.dueAmount > 0 &&
+      customOrder.status === "completed"
+    ) {
+      customOrder.status = "pending"; // If dueAmount becomes positive again
+    }
+
+    customOrder.updatedAt = new Date(); // Update timestamp
+
+    await customOrder.save();
+
+    res.status(200).json({
+      message: "Custom order updated successfully",
+      order: customOrder,
+    });
+  } catch (error) {
+    console.error("Error updating custom order:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const deleteCustomOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid custom order ID." });
+    }
+
+    const customOrder = await CustomOrder.findByIdAndDelete(orderId);
+
+    if (!customOrder) {
+      return res.status(404).json({ message: "Custom order not found." });
+    }
+
+    res.status(200).json({ message: "Custom order deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting custom order:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const updateCustomOrderPayment = async (req, res) => {
+  try {
+    const { orderId, paymentId } = req.params;
+    const { amount, paymentMethod, paymentReference, paymentDate, notes } =
+      req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid custom order ID." });
+    }
+    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+      return res.status(400).json({ message: "Invalid payment ID." });
+    }
+
+    const customOrder = await CustomOrder.findById(orderId);
+    if (!customOrder) {
+      return res.status(404).json({ message: "Custom order not found." });
+    }
+
+    const paymentIndex = customOrder.payments.findIndex(
+      (p) => p._id.toString() === paymentId
+    );
+    if (paymentIndex === -1) {
+      return res
+        .status(404)
+        .json({ message: "Payment not found in this order." });
+    }
+
+    const oldPaymentAmount = customOrder.payments[paymentIndex].amount;
+
+    // Update payment fields
+    if (amount !== undefined)
+      customOrder.payments[paymentIndex].amount = amount;
+    if (paymentMethod !== undefined)
+      customOrder.payments[paymentIndex].paymentMethod = paymentMethod;
+    if (paymentReference !== undefined)
+      customOrder.payments[paymentIndex].paymentReference = paymentReference;
+    if (paymentDate !== undefined)
+      customOrder.payments[paymentIndex].paymentDate = new Date(paymentDate);
+    if (notes !== undefined) customOrder.payments[paymentIndex].notes = notes;
+    customOrder.payments[paymentIndex].updatedAt = new Date();
+
+    // Recalculate paidAmount and dueAmount
+    customOrder.paidAmount = customOrder.payments.reduce(
+      (sum, p) => sum + p.amount,
+      0
+    );
+    customOrder.dueAmount = customOrder.totalAmount - customOrder.paidAmount;
+
+    // Ensure dueAmount is not negative
+    customOrder.dueAmount = Math.max(0, customOrder.dueAmount);
+
+    // Update order status based on dueAmount
+    if (customOrder.dueAmount <= 0) {
+      customOrder.status = "completed";
+      customOrder.dueAmount = 0;
+    } else {
+      customOrder.status = "pending"; // Or whatever status indicates partial payment
+    }
+
+    await customOrder.save();
+
+    res.status(200).json({
+      message: "Payment updated successfully for custom order",
+      payment: customOrder.payments[paymentIndex],
+      customOrderPaymentStatus: {
+        totalAmount: customOrder.totalAmount,
+        paidAmount: customOrder.paidAmount,
+        dueAmount: customOrder.dueAmount,
+        status: customOrder.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating payment for custom order:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createCustomOrder,
   getAllCustomOrders,
   generateCustomOrderInvoice,
   createCustomOrderPayment,
+  updateCustomOrder,
+  deleteCustomOrder,
+  updateCustomOrderPayment,
 };
