@@ -6,9 +6,7 @@ const app = express();
 require("dotenv").config();
 
 const corsOptions = {
-  origin: "http://localhost:5173",
-  credentials: true,
-  optionSuccessStatus: 200,
+  origin: "*", // Updated to match frontend port
 };
 
 const routes = require("./routes/route");

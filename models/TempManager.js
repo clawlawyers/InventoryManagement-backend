@@ -25,7 +25,7 @@ const TempManagerSchema = new Schema({
   },
   status: {
     type: Boolean,
-    default: "false",
+    default: false,
   },
   submittedAt: {
     type: Date,

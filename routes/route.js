@@ -16,7 +16,6 @@ const paymentRoutes = require("./paymentRoutes");
 const imageGenerationRoutes = require("./imageGeneration");
 const whatsappRoutes = require("./whatsappRoutes");
 const salesAnalyticsRoutes = require("./salesAnalyticsRoutes");
-const tempManagerRoutes = require("./tempManagerRoutes");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -33,6 +32,5 @@ router.use("/payments", paymentRoutes);
 router.use("/genImg", imageGenerationRoutes);
 router.use("/whatsapp", whatsappRoutes);
 router.use("/analytics", salesAnalyticsRoutes);
-router.use("/temp-managers", tempManagerRoutes);
 
 module.exports = router;

@@ -15,14 +15,14 @@ router.get(
 );
 
 // Admin can approve a temporary manager registration
-router.post(
-  "/temp-managers/:tempManagerId/approve",
+router.patch(
+  "/managers/:tempManagerId/approve", // Changed to managers and PATCH
   adminController.approveTempManagerRegistration
 );
 
 // Admin can reject a temporary manager registration
-router.post(
-  "/temp-managers/:tempManagerId/reject",
+router.patch(
+  "/managers/:tempManagerId/reject", // Changed to managers and PATCH
   adminController.rejectTempManagerRegistration
 );
 

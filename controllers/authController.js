@@ -3,6 +3,7 @@ const Salesman = require("../models/Salesman");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const sendEmail = require("../utils/nodemailer");
+const TempManager = require("../models/TempManager");
 
 const accountCreatationRequest = async (req, res) => {
   try {
@@ -14,12 +15,26 @@ const accountCreatationRequest = async (req, res) => {
           "Name, email, phoneNumber ,GSTNumber and organisationName are required",
       });
     }
-
     // Check if email is already in use
+    const existingTempManager = await TempManager.findOne({ email });
+    if (existingTempManager) {
+      return res.status(400).json({ message: "Email is already in use" });
+    }
+
     const existingManager = await Manager.findOne({ email });
     if (existingManager) {
       return res.status(400).json({ message: "Email is already registered" });
     }
+
+    // Save details to TempManager
+    const tempManager = new TempManager({
+      name,
+      email,
+      phoneNumber,
+      GSTNumber,
+      organisationName,
+    });
+    await tempManager.save();
 
     // Send email
     const htmlTemplate = `
@@ -137,6 +152,19 @@ const managerLogin = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+const getPendingRegistrations = async (req, res) => {
+  try {
+    const pendingManagers = await TempManager.find({ status: false }).sort({
+      submittedAt: -1,
+    });
+
+    res.status(200).json(pendingManagers);
+  } catch (error) {
+    console.error("Error fetching pending registrations:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -347,6 +375,33 @@ const getVerifyUser = async (req, res) => {
     res.status(401).json({ message: "Token is invalid" });
   }
 };
+
+// Approve a temporary manager/user
+const approveTempUser = async (req, res) => {
+  try {
+    const { tempManagerId } = req.params;
+
+    // Find the temporary manager by ID
+    const tempManager = await TempManager.findById(tempManagerId);
+
+    if (!tempManager) {
+      return res.status(404).json({ message: "Temporary manager not found" });
+    }
+
+    // Set the status to true as per user's feedback
+    tempManager.status = true;
+    await tempManager.save();
+
+    res.status(200).json({
+      message: "Temporary manager approved successfully",
+      tempManagerDetails: tempManager,
+    });
+  } catch (error) {
+    console.error("Error approving temporary manager:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   managerLogin,
   salesmanLogin,
@@ -354,4 +409,6 @@ module.exports = {
   getVerify,
   accountCreatationRequest,
   getVerifyUser,
+  getPendingRegistrations,
+  approveTempUser,
 };

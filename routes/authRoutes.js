@@ -7,6 +7,8 @@ const {
   getVerify,
   accountCreatationRequest,
   getVerifyUser,
+  getPendingRegistrations,
+  approveTempUser, // Added approveTempUser
 } = require("../controllers/authController");
 const deleteManagerRequest = require("../models/deleteManagerRequest");
 
@@ -16,8 +18,9 @@ router.post("/manager/signup", managerSignup);
 router.get("/getVerify", getVerify);
 router.get("/getVerifyUser", getVerifyUser);
 router.post("/salesman/login", salesmanLogin);
-
 router.post("/accountCreatationRequest", accountCreatationRequest);
+router.get("/getPendingManagers", getPendingRegistrations);
+router.post("/approve-temp-user/:tempManagerId", approveTempUser); // New route for approving temporary managers
 
 // POST /api/delete-manager-request
 router.post("/delete-manager-request", async (req, res) => {
