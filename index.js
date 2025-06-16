@@ -6,7 +6,10 @@ const app = express();
 require("dotenv").config();
 
 const corsOptions = {
-  origin: "*", // Updated to match frontend port
+  origin: process.env.FRONTEND_URL,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 };
 
 const routes = require("./routes/route");
