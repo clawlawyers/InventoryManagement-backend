@@ -33,10 +33,18 @@ const createCustomOrder = async (req, res) => {
       !billingFrom.firmGstNumber ||
       !billingTo.firmName ||
       !billingTo.firmAddress ||
-      !billingTo.firmGstNumber
+      !billingTo.firmGstNumber ||
+      !billingTo.mobileNumber
     ) {
       return res.status(400).json({
-        message: "Missing required firm details in billingFrom or billingTo.",
+        message:
+          "Missing required firm details or mobile number in billingFrom or billingTo.",
+      });
+    }
+
+    if (typeof billingTo.mobileNumber !== "number") {
+      return res.status(400).json({
+        message: "Mobile number in billingTo must be a number.",
       });
     }
 
@@ -193,6 +201,7 @@ const generateCustomOrderInvoice = async (req, res) => {
     doc.text(`Firm Name: ${order.billingTo.firmName}`);
     doc.text(`Address: ${order.billingTo.firmAddress}`);
     doc.text(`GST Number: ${order.billingTo.firmGstNumber}`);
+    doc.text(`Mobile Number: ${order.billingTo.mobileNumber}`);
     doc.moveDown();
 
     // Billing Details
@@ -417,6 +426,17 @@ const updateCustomOrder = async (req, res) => {
         key === "billingDetails"
       ) {
         // Merge nested objects
+        if (
+          key === "billingTo" &&
+          updates[key] &&
+          updates[key].mobileNumber !== undefined
+        ) {
+          if (typeof updates[key].mobileNumber !== "number") {
+            return res.status(400).json({
+              message: "Mobile number in billingTo must be a number.",
+            });
+          }
+        }
         customOrder[key] = { ...customOrder[key], ...updates[key] };
       } else if (
         key !== "_id" &&
