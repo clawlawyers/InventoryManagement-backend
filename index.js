@@ -6,7 +6,7 @@ const app = express();
 require("dotenv").config();
 
 const corsOptions = {
-  origin: "https://fabi-q-admin.vercel.app/",
+  origin: "*",
   // origin: "http://localhost:3000", // For local development
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
