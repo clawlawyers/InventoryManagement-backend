@@ -30,7 +30,7 @@ try {
   throw error;
 }
 
-const generateInvoicePDF = async (invoice) => {
+const generateInvoicePDF = async (invoice, pageSize = "A4") => {
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -56,7 +56,7 @@ const generateInvoicePDF = async (invoice) => {
       let doc;
       try {
         doc = new PDFDocument({
-          size: "A4",
+          size: pageSize,
           margin: 50,
           bufferPages: true,
           font: "Times-Roman", // Set default font to Times-Roman
@@ -188,11 +188,11 @@ const generateInvoicePDF = async (invoice) => {
       if (productsForPDF && productsForPDF.length > 0) {
         try {
           productsForPDF.forEach((product, index) => {
-            if (y > 700) {
-              // Check if we need a new page
-              doc.addPage();
-              y = 50;
-            }
+            // Removed page break logic to ensure content stays on one page
+            // if (y > 700) {
+            //   doc.addPage();
+            //   y = 50;
+            // }
 
             console.log(
               `📦 Processing product ${index}:`,
@@ -256,6 +256,10 @@ const generateInvoicePDF = async (invoice) => {
       }
 
       doc.moveDown(2);
+
+      // Add page break before invoice amount details
+      doc.addPage();
+      doc.y = 50; // Ensure content starts at the top of the new page
 
       // Add totals
       try {
@@ -359,7 +363,7 @@ const generateInvoicePDF = async (invoice) => {
 };
 
 // Generate Order Invoice PDF in memory (no file storage)
-const generateOrderInvoicePDF = async (order) => {
+const generateOrderInvoicePDF = async (order, pageSize = "A4") => {
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -377,7 +381,7 @@ const generateOrderInvoicePDF = async (order) => {
 
       // Create PDF document
       const doc = new PDFDocument({
-        size: "A4",
+        size: pageSize,
         margin: 50,
         bufferPages: true,
       });
@@ -615,7 +619,12 @@ const generateOrderInvoicePDF = async (order) => {
 };
 
 // Generate PDF for inventory with all products
-const generateInventoryPDF = async (inventory, products, company) => {
+const generateInventoryPDF = async (
+  inventory,
+  products,
+  company,
+  pageSize = "A4"
+) => {
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -624,7 +633,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
 
       // Create PDF document
       const doc = new PDFDocument({
-        size: "A4",
+        size: pageSize,
         margin: 50,
         bufferPages: true,
       });
@@ -730,41 +739,41 @@ const generateInventoryPDF = async (inventory, products, company) => {
         doc.fontSize(9).font("Times-Roman");
 
         products.forEach((product, index) => {
-          // Check if we need a new page
-          if (currentY > 700) {
-            doc.addPage();
-            currentY = 50;
+          // Removed page break logic to ensure content stays on one page
+          // if (currentY > 700) {
+          //   doc.addPage();
+          //   currentY = 50;
 
-            // Redraw headers on new page
-            doc.fontSize(10).font("Times-Bold");
-            doc.text("Bail No.", bailNumberX, currentY, {
-              width: 70,
-              lineGap: 2,
-            });
-            doc.text("Design", designCodeX, currentY, {
-              width: 70,
-              lineGap: 2,
-            });
-            doc.text("Category", categoryX, currentY, {
-              width: 70,
-              lineGap: 2,
-            });
-            doc.text("Lot No.", lotNumberX, currentY, {
-              width: 70,
-              lineGap: 2,
-            });
-            doc.text("Stock", stockX, currentY, { width: 50, lineGap: 2 });
-            doc.text("Price", priceX, currentY, { width: 50, lineGap: 2 });
-            doc.text("Date", dateX, currentY, { width: 60, lineGap: 2 });
+          //   // Redraw headers on new page
+          //   doc.fontSize(10).font("Times-Bold");
+          //   doc.text("Bail No.", bailNumberX, currentY, {
+          //     width: 70,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Design", designCodeX, currentY, {
+          //     width: 70,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Category", categoryX, currentY, {
+          //     width: 70,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Lot No.", lotNumberX, currentY, {
+          //     width: 70,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Stock", stockX, currentY, { width: 50, lineGap: 2 });
+          //   doc.text("Price", priceX, currentY, { width: 50, lineGap: 2 });
+          //   doc.text("Date", dateX, currentY, { width: 60, lineGap: 2 });
 
-            doc
-              .moveTo(bailNumberX, currentY + 22)
-              .lineTo(dateX + 60, currentY + 22)
-              .stroke();
+          //   doc
+          //     .moveTo(bailNumberX, currentY + 22)
+          //     .lineTo(dateX + 60, currentY + 22)
+          //     .stroke();
 
-            currentY += 35;
-            doc.fontSize(9).font("Times-Roman");
-          }
+          //   currentY += 35;
+          //   doc.fontSize(9).font("Times-Roman");
+          // }
 
           // Bail Number
           doc.text(product.bail_number || "N/A", bailNumberX, currentY, {
@@ -865,7 +874,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
 };
 
 // Generate PDF for single product
-const generateProductPDF = async (product) => {
+const generateProductPDF = async (product, pageSize = "A4") => {
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -874,7 +883,7 @@ const generateProductPDF = async (product) => {
 
       // Create PDF document
       const doc = new PDFDocument({
-        size: "A4",
+        size: pageSize,
         margin: 50,
         bufferPages: true,
       });
@@ -993,7 +1002,10 @@ const generateProductPDF = async (product) => {
   });
 };
 
-const generatePaymentAcknowledgementReceiptPDF = async (data) => {
+const generatePaymentAcknowledgementReceiptPDF = async (
+  data,
+  pageSize = "A4"
+) => {
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -1001,7 +1013,7 @@ const generatePaymentAcknowledgementReceiptPDF = async (data) => {
       );
 
       const doc = new PDFDocument({
-        size: "A4",
+        size: pageSize,
         margin: 20,
         bufferPages: true,
       });
@@ -1171,6 +1183,21 @@ const generatePaymentAcknowledgementReceiptPDF = async (data) => {
       // Table rows (12 identical rows as shown in image)
       doc.fontSize(9).font("Times-Roman");
       for (let i = 0; i < 12; i++) {
+        // Check for new page before adding each row
+        if (currentY > 700) {
+          doc.addPage();
+          currentY = 50; // Reset Y for new page
+          // Redraw headers on new page if needed
+          doc.fontSize(9).font("Times-Bold");
+          let headerXPos = leftColX + 5;
+          headers.forEach((header, idx) => {
+            doc.text(header, headerXPos, currentY);
+            headerXPos += colWidths[idx];
+          });
+          currentY += 15; // Adjust Y after redrawing headers
+          doc.fontSize(9).font("Times-Roman"); // Reset font for content
+        }
+
         xPos = leftColX + 5;
         doc.text("Organic Cotton Fabric", xPos, currentY);
         xPos += colWidths[0];
@@ -1185,9 +1212,55 @@ const generatePaymentAcknowledgementReceiptPDF = async (data) => {
         currentY += 15;
       }
 
+      // Force a new page for Invoice Amount Details section
+      doc.addPage();
+      currentY = 50;
+
+      // Invoice Amount Details Section
+      doc.rect(leftColX, currentY, fullWidth, 20).fill("#D3D3D3").stroke();
+      doc.fillColor("black").fontSize(10).font("Times-Bold");
+      doc.text("Invoice Amount Details :", leftColX + 5, currentY + 5);
+      doc
+        .moveTo(leftColX, currentY + 20)
+        .lineTo(leftColX + fullWidth, currentY + 20)
+        .stroke();
+
+      currentY += 30;
+      doc.fontSize(9).font("Times-Roman");
+
+      // Assuming data has these fields for demonstration
+      const grossAmount = data.grossAmount || 240000.55;
+      const discountApplied = data.discountApplied || 16.66;
+      const discountAmount = data.discountAmount || 40000.0;
+      const gstCharged = data.gstCharged || 22.5;
+      const totalPayable = data.totalPayable || 200000.55;
+
+      doc.text(`Gross Amount :`, leftColX + 5, currentY);
+      doc.text(`₹ ${grossAmount.toFixed(2)}`, leftColX + 150, currentY);
+      currentY += 15;
+      doc.text(`Discount Applied :`, leftColX + 5, currentY);
+      doc.text(`${discountApplied.toFixed(2)} %`, leftColX + 150, currentY);
+      currentY += 15;
+      doc.text(`Discount Amount :`, leftColX + 5, currentY);
+      doc.text(`₹ ${discountAmount.toFixed(2)}`, leftColX + 150, currentY);
+      currentY += 15;
+      doc.text(`GST Charged :`, leftColX + 5, currentY);
+      doc.text(`${gstCharged.toFixed(2)} %`, leftColX + 150, currentY);
+
+      currentY += 40; // Space before total payable
+
+      // Total Payable
+      doc
+        .moveTo(leftColX, currentY - 5)
+        .lineTo(leftColX + fullWidth, currentY - 5)
+        .stroke();
+      doc.fontSize(12).font("Times-Bold");
+      doc.text(`Total Payable ( Net Amount ) :`, leftColX + 5, currentY);
+      doc.text(`₹ ${totalPayable.toFixed(2)}`, leftColX + 250, currentY);
+      currentY += 30;
+
       // Footer
       const footerY = doc.page.height - 40;
-
       // Draw line above footer text
       doc
         .moveTo(leftColX, footerY - 5)
@@ -1201,7 +1274,7 @@ const generatePaymentAcknowledgementReceiptPDF = async (data) => {
         footerY
       );
       doc.text("Claw Legaltech", doc.page.width - 150, footerY);
-      doc.text("Page: 1 of 2", doc.page.width - 150, footerY + 12);
+      doc.text("Page: 2 of 2", doc.page.width - 150, footerY + 12); // Updated page number
 
       // Draw rectangle around the footer section
       doc.rect(leftColX, footerY - 10, doc.page.width - 50, 35).stroke();
@@ -1215,6 +1288,197 @@ const generatePaymentAcknowledgementReceiptPDF = async (data) => {
     }
   });
 };
+const generateCustomOrderPDF = async (customOrder, pageSize = "A4") => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log(
+        `📄 Starting PDF generation for custom order ${customOrder._id}`
+      );
+
+      // Validate required custom order data
+      if (!customOrder._id) {
+        throw new Error("Custom Order ID is required");
+      }
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: pageSize,
+        margin: 50,
+        bufferPages: true,
+      });
+
+      // Collect PDF data in memory
+      const chunks = [];
+
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+
+      doc.on("end", () => {
+        console.log("✅ Custom Order PDF generated successfully in memory");
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve({
+          buffer: pdfBuffer,
+          filename: `custom_order_${customOrder._id}_${Date.now()}.pdf`,
+          size: pdfBuffer.length,
+        });
+      });
+
+      doc.on("error", (error) => {
+        console.error("❌ PDF document error:", error);
+        reject(error);
+      });
+
+      // Header
+      doc
+        .fontSize(20)
+        .font("Times-Bold")
+        .text("CUSTOM ORDER DETAILS", { align: "center" });
+      doc.moveDown(2);
+
+      // Client details
+      if (customOrder.client) {
+        doc
+          .fontSize(14)
+          .font("Times-Bold")
+          .text("CLIENT DETAILS:", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12).font("Times-Roman");
+        doc.text(`Client: ${customOrder.client.name || "N/A"}`, { lineGap: 4 });
+        doc.text(`Phone: ${customOrder.client.phone || "N/A"}`, { lineGap: 4 });
+        if (customOrder.client.firmName) {
+          doc.text(`Firm: ${customOrder.client.firmName}`, { lineGap: 4 });
+        }
+        if (customOrder.client.firmGSTNumber) {
+          doc.text(`GST Number: ${customOrder.client.firmGSTNumber}`, {
+            lineGap: 4,
+          });
+        }
+        doc.text(`Address: ${customOrder.client.address || "N/A"}`, {
+          lineGap: 4,
+        });
+        doc.moveDown(1.5);
+      }
+
+      // Custom Order details
+      doc
+        .fontSize(14)
+        .font("Times-Bold")
+        .text("ORDER DETAILS:", { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Times-Roman");
+      doc.text(`Custom Order ID: ${customOrder._id}`, { lineGap: 4 });
+      doc.text(
+        `Order Date: ${new Date(customOrder.createdAt).toLocaleDateString()}`,
+        { lineGap: 4 }
+      );
+      doc.text(`Status: ${customOrder.status.toUpperCase()}`, { lineGap: 4 });
+      doc.text(`Total Amount: ₹${(customOrder.totalAmount || 0).toFixed(2)}`, {
+        lineGap: 4,
+      });
+      doc.moveDown(2);
+
+      // Products table header
+      doc
+        .fontSize(14)
+        .font("Times-Bold")
+        .text("PRODUCTS:", { underline: true });
+      doc.moveDown(1);
+
+      // Table headers
+      const tableTop = doc.y;
+      const productNameX = 50;
+      const quantityX = 250;
+      const unitPriceX = 350;
+      const totalPriceX = 450;
+
+      doc.fontSize(11).font("Times-Bold");
+      doc.text("Product Name", productNameX, tableTop, {
+        width: 180,
+        lineGap: 2,
+      });
+      doc.text("Quantity", quantityX, tableTop, { width: 80, lineGap: 2 });
+      doc.text("Unit Price", unitPriceX, tableTop, { width: 80, lineGap: 2 });
+      doc.text("Total Price", totalPriceX, tableTop, { width: 80, lineGap: 2 });
+
+      // Draw line under headers
+      doc
+        .moveTo(productNameX, tableTop + 22)
+        .lineTo(totalPriceX + 80, tableTop + 22)
+        .stroke();
+
+      let currentY = tableTop + 35;
+
+      // Products data
+      if (customOrder.products && customOrder.products.length > 0) {
+        doc.fontSize(10).font("Times-Roman");
+
+        customOrder.products.forEach((product) => {
+          // Removed page break logic to ensure content stays on one page
+          // if (currentY > 700) {
+          //   doc.addPage();
+          //   currentY = 50;
+          //   doc.fontSize(11).font("Times-Bold");
+          //   doc.text("Product Name", productNameX, currentY, {
+          //     width: 180,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Quantity", quantityX, currentY, {
+          //     width: 80,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Unit Price", unitPriceX, currentY, {
+          //     width: 80,
+          //     lineGap: 2,
+          //   });
+          //   doc.text("Total Price", totalPriceX, currentY, {
+          //     width: 80,
+          //     lineGap: 2,
+          //   });
+          //   doc
+          //     .moveTo(productNameX, currentY + 22)
+          //     .lineTo(totalPriceX + 80, currentY + 22)
+          //     .stroke();
+          //   currentY += 35;
+          //   doc.fontSize(10).font("Times-Roman");
+          // }
+
+          doc.text(product.productName || "N/A", productNameX, currentY, {
+            width: 180,
+            lineGap: 3,
+          });
+          doc.text((product.quantity || 0).toString(), quantityX, currentY, {
+            width: 80,
+            lineGap: 3,
+          });
+          doc.text(
+            `₹${(product.unitPrice || 0).toFixed(2)}`,
+            unitPriceX,
+            currentY,
+            { width: 80, lineGap: 3 }
+          );
+          doc.text(
+            `₹${(product.totalPrice || 0).toFixed(2)}`,
+            totalPriceX,
+            currentY,
+            { width: 80, lineGap: 3 }
+          );
+
+          currentY += 25;
+        });
+      } else {
+        doc.text("No products in this custom order", productNameX, currentY);
+      }
+
+      // Finalize PDF
+      doc.end();
+      console.log("✅ Custom Order PDF finalized");
+    } catch (error) {
+      console.error(`❌ Error generating Custom Order PDF: ${error.message}`);
+      reject(error);
+    }
+  });
+};
 
 module.exports = {
   generateInvoicePDF,
@@ -1222,4 +1486,5 @@ module.exports = {
   generateInventoryPDF,
   generateProductPDF,
   generatePaymentAcknowledgementReceiptPDF,
+  generateCustomOrderPDF,
 };
