@@ -10,6 +10,7 @@ yarn.lock
 frontend/
 scripts/
 docs/
+mcp-servers/
 
 # # dotenv environment variables
 .env

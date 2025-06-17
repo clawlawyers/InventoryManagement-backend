@@ -59,6 +59,7 @@ const generateInvoicePDF = async (invoice) => {
           size: "A4",
           margin: 50,
           bufferPages: true,
+          font: "Times-Roman", // Set default font to Times-Roman
         });
         console.log("📄 PDF document created successfully");
       } catch (error) {
@@ -410,18 +411,15 @@ const generateOrderInvoicePDF = async (order) => {
       // Header
       doc
         .fontSize(20)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("ORDER INVOICE", { align: "center" });
       doc.moveDown(2); // More space after header
 
       // Company details
       if (order.company) {
-        doc
-          .fontSize(14)
-          .font("Helvetica-Bold")
-          .text("FROM:", { underline: true });
+        doc.fontSize(14).font("Times-Bold").text("FROM:", { underline: true });
         doc.moveDown(0.5);
-        doc.fontSize(12).font("Helvetica");
+        doc.fontSize(12).font("Times-Roman");
         doc.text(`Company: ${order.company.name || "N/A"}`, { lineGap: 4 });
         doc.text(`Address: ${order.company.address || "N/A"}`, { lineGap: 4 });
         if (order.company.GSTNumber) {
@@ -432,12 +430,9 @@ const generateOrderInvoicePDF = async (order) => {
 
       // Client details
       if (order.client) {
-        doc
-          .fontSize(14)
-          .font("Helvetica-Bold")
-          .text("TO:", { underline: true });
+        doc.fontSize(14).font("Times-Bold").text("TO:", { underline: true });
         doc.moveDown(0.5);
-        doc.fontSize(12).font("Helvetica");
+        doc.fontSize(12).font("Times-Roman");
         doc.text(`Client: ${order.client.name || "N/A"}`, { lineGap: 4 });
         doc.text(`Phone: ${order.client.phone || "N/A"}`, { lineGap: 4 });
         if (order.client.firmName) {
@@ -453,10 +448,10 @@ const generateOrderInvoicePDF = async (order) => {
       // Order details
       doc
         .fontSize(14)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("ORDER DETAILS:", { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(12).font("Helvetica");
+      doc.fontSize(12).font("Times-Roman");
       doc.text(`Order ID: ${order._id}`, { lineGap: 4 });
       doc.text(
         `Order Date: ${new Date(order.createdAt).toLocaleDateString()}`,
@@ -471,7 +466,7 @@ const generateOrderInvoicePDF = async (order) => {
       // Products table header
       doc
         .fontSize(14)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("PRODUCTS:", { underline: true });
       doc.moveDown(1);
 
@@ -483,7 +478,7 @@ const generateOrderInvoicePDF = async (order) => {
       const priceX = 420;
       const totalX = 490;
 
-      doc.fontSize(11).font("Helvetica-Bold");
+      doc.fontSize(11).font("Times-Bold");
       doc.text("Item Code", itemCodeX, tableTop, { width: 90, lineGap: 2 });
       doc.text("Description", descriptionX, tableTop, {
         width: 180,
@@ -503,7 +498,7 @@ const generateOrderInvoicePDF = async (order) => {
 
       // Products data
       if (order.products && order.products.length > 0) {
-        doc.fontSize(10).font("Helvetica"); // Set font for product rows
+        doc.fontSize(10).font("Times-Roman"); // Set font for product rows
 
         order.products.forEach((product) => {
           const inventoryProduct = product.inventoryProduct;
@@ -559,7 +554,7 @@ const generateOrderInvoicePDF = async (order) => {
       doc.fontSize(12);
 
       // Total Amount (bold and larger)
-      doc.fontSize(14).font("Helvetica-Bold");
+      doc.fontSize(14).font("Times-Bold");
       doc.text(
         `Total Amount: Rs. ${order.totalAmount.toFixed(2)}`,
         priceX,
@@ -569,7 +564,7 @@ const generateOrderInvoicePDF = async (order) => {
       currentY += 30; // More spacing after total amount
 
       // Reset to normal font
-      doc.fontSize(12).font("Helvetica");
+      doc.fontSize(12).font("Times-Roman");
 
       if (order.paidAmount > 0) {
         doc.text(
@@ -592,7 +587,7 @@ const generateOrderInvoicePDF = async (order) => {
       }
 
       // Payment Status with some emphasis
-      doc.fontSize(11).font("Helvetica-Bold");
+      doc.fontSize(11).font("Times-Bold");
       doc.text(
         `Payment Status: ${order.paymentStatus.toUpperCase()}`,
         priceX,
@@ -602,7 +597,7 @@ const generateOrderInvoicePDF = async (order) => {
 
       // Footer with better spacing
       currentY += 40; // More space before footer
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font("Times-Roman");
       doc.text("Thank you for your business!", 50, currentY, {
         align: "center",
         width: 500,
@@ -662,7 +657,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
       // Header
       doc
         .fontSize(20)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("INVENTORY REPORT", { align: "center" });
       doc.moveDown(2);
 
@@ -670,10 +665,10 @@ const generateInventoryPDF = async (inventory, products, company) => {
       if (company) {
         doc
           .fontSize(14)
-          .font("Helvetica-Bold")
+          .font("Times-Bold")
           .text("COMPANY DETAILS:", { underline: true });
         doc.moveDown(0.5);
-        doc.fontSize(12).font("Helvetica");
+        doc.fontSize(12).font("Times-Roman");
         doc.text(`Company: ${company.name || "N/A"}`, { lineGap: 4 });
         doc.text(`Address: ${company.address || "N/A"}`, { lineGap: 4 });
         if (company.GSTNumber) {
@@ -685,10 +680,10 @@ const generateInventoryPDF = async (inventory, products, company) => {
       // Inventory details
       doc
         .fontSize(14)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("INVENTORY DETAILS:", { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(12).font("Helvetica");
+      doc.fontSize(12).font("Times-Roman");
       doc.text(`Inventory Name: ${inventory.inventoryName}`, { lineGap: 4 });
       doc.text(`Total Products: ${products.length}`, { lineGap: 4 });
       doc.text(`Generated On: ${new Date().toLocaleDateString()}`, {
@@ -699,7 +694,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
       // Products table header
       doc
         .fontSize(14)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("PRODUCTS:", { underline: true });
       doc.moveDown(1);
 
@@ -713,7 +708,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
       const priceX = 430;
       const dateX = 490;
 
-      doc.fontSize(10).font("Helvetica-Bold");
+      doc.fontSize(10).font("Times-Bold");
       doc.text("Bail No.", bailNumberX, tableTop, { width: 70, lineGap: 2 });
       doc.text("Design", designCodeX, tableTop, { width: 70, lineGap: 2 });
       doc.text("Category", categoryX, tableTop, { width: 70, lineGap: 2 });
@@ -732,7 +727,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
 
       // Products data
       if (products && products.length > 0) {
-        doc.fontSize(9).font("Helvetica");
+        doc.fontSize(9).font("Times-Roman");
 
         products.forEach((product, index) => {
           // Check if we need a new page
@@ -741,7 +736,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
             currentY = 50;
 
             // Redraw headers on new page
-            doc.fontSize(10).font("Helvetica-Bold");
+            doc.fontSize(10).font("Times-Bold");
             doc.text("Bail No.", bailNumberX, currentY, {
               width: 70,
               lineGap: 2,
@@ -768,7 +763,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
               .stroke();
 
             currentY += 35;
-            doc.fontSize(9).font("Helvetica");
+            doc.fontSize(9).font("Times-Roman");
           }
 
           // Bail Number
@@ -825,11 +820,11 @@ const generateInventoryPDF = async (inventory, products, company) => {
 
       // Summary section
       currentY += 30;
-      doc.fontSize(12).font("Helvetica-Bold");
+      doc.fontSize(12).font("Times-Bold");
       doc.text("SUMMARY:", 50, currentY);
       currentY += 20;
 
-      doc.fontSize(11).font("Helvetica");
+      doc.fontSize(11).font("Times-Roman");
       const totalStock = products.reduce(
         (sum, product) => sum + (product.stock_amount || 0),
         0
@@ -852,7 +847,7 @@ const generateInventoryPDF = async (inventory, products, company) => {
 
       // Footer
       currentY += 40;
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font("Times-Roman");
       doc.text("Generated by Inventory Management System", 50, currentY, {
         align: "center",
         width: 500,
@@ -912,7 +907,7 @@ const generateProductPDF = async (product) => {
       // Header
       doc
         .fontSize(20)
-        .font("Helvetica-Bold")
+        .font("Times-Bold")
         .text("PRODUCT DETAILS", { align: "center" });
       doc.moveDown(3);
 
@@ -943,28 +938,30 @@ const generateProductPDF = async (product) => {
 
       // Draw product details
       let currentY = doc.y;
-      doc.fontSize(14).font("Helvetica-Bold");
+      doc.fontSize(14).font("Times-Bold");
 
       details.forEach((detail) => {
         // Label
         doc.text(detail.label, 50, currentY, { width: 150 });
 
         // Value
-        doc.font("Helvetica").text(detail.value, 220, currentY, { width: 300 });
+        doc
+          .font("Times-Roman")
+          .text(detail.value, 220, currentY, { width: 300 });
 
         currentY += 30;
-        doc.font("Helvetica-Bold");
+        doc.font("Times-Bold");
       });
 
       // Add some spacing
       currentY += 20;
 
       // Additional information section
-      doc.fontSize(16).font("Helvetica-Bold");
+      doc.fontSize(16).font("Times-Bold");
       doc.text("ADDITIONAL INFORMATION", 50, currentY);
       currentY += 30;
 
-      doc.fontSize(12).font("Helvetica");
+      doc.fontSize(12).font("Times-Roman");
       doc.text(
         `Generated On: ${new Date().toLocaleDateString()}`,
         50,
@@ -979,7 +976,7 @@ const generateProductPDF = async (product) => {
 
       // Footer
       currentY += 60;
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font("Times-Roman");
       doc.text("Generated by Inventory Management System", 50, currentY, {
         align: "center",
         width: 500,
@@ -996,9 +993,233 @@ const generateProductPDF = async (product) => {
   });
 };
 
+const generatePaymentAcknowledgementReceiptPDF = async (data) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log(
+        `📄 Starting PDF generation for Payment Acknowledgement Receipt`
+      );
+
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 20,
+        bufferPages: true,
+      });
+
+      const chunks = [];
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+
+      doc.on("end", () => {
+        console.log(
+          "✅ Payment Acknowledgement Receipt PDF generated successfully in memory"
+        );
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve({
+          buffer: pdfBuffer,
+          filename: `payment_acknowledgement_receipt_${Date.now()}.pdf`,
+          size: pdfBuffer.length,
+        });
+      });
+
+      doc.on("error", (error) => {
+        console.error("❌ PDF document error:", error);
+        reject(error);
+      });
+
+      // Header Section with Logo and QR Code placeholders
+      const logoX = 25;
+      const logoY = 25;
+      const qrX = doc.page.width - 75;
+      const qrY = 25;
+
+      // Logo placeholder (orange square with "FabriQs" text)
+      doc.rect(logoX, logoY, 50, 50).fill("#FF8C00").stroke();
+      doc.fillColor("white").fontSize(8).font("Times-Bold");
+      doc.text("FabriQs", logoX + 10, logoY + 20);
+
+      // QR Code placeholder (black square)
+      doc.fillColor("black").rect(qrX, qrY, 50, 50).fill().stroke();
+
+      // Main title
+      doc.fillColor("black").fontSize(18).font("Times-Bold");
+      doc.text("FabriQS Textile Automation & Management", 0, logoY + 10, {
+        align: "center",
+        width: doc.page.width,
+      });
+      doc.fontSize(14).font("Times-Bold");
+      doc.text("Payment Acknowledgment Receipt", 0, logoY + 35, {
+        align: "center",
+        width: doc.page.width,
+      });
+
+      // Start content below header
+      let currentY = logoY + 80;
+
+      // Beneficiary and Client Details Section (side by side with borders)
+      const leftColX = 25;
+      const rightColX = 300;
+      const colWidth = 250;
+      const sectionHeight = 100;
+
+      // Beneficiary header with gray background
+      doc.rect(leftColX, currentY, colWidth, 20).fill("#D3D3D3").stroke();
+      doc.fillColor("black").fontSize(10).font("Times-Bold");
+      doc.text("Beneficiary Details :", leftColX + 5, currentY + 5);
+      doc
+        .moveTo(leftColX, currentY + 20)
+        .lineTo(leftColX + colWidth, currentY + 20)
+        .stroke();
+
+      // Beneficiary content
+      doc.fontSize(9).font("Times-Roman");
+      doc.text(`Company Name :`, leftColX + 5, currentY + 30);
+      doc.text(`Soumya Test Textile`, leftColX + 80, currentY + 30);
+      doc.text(`Company Address :`, leftColX + 5, currentY + 45);
+      doc.text(`Kolkata, West Bengal India`, leftColX + 80, currentY + 45);
+      doc.text(`GST Number :`, leftColX + 5, currentY + 60);
+      doc.text(`GLART23569880`, leftColX + 80, currentY + 60);
+
+      // Client header with gray background
+      doc.rect(rightColX, currentY, colWidth, 20).fill("#D3D3D3").stroke();
+      doc.fillColor("black").fontSize(10).font("Times-Bold");
+      doc.text("Client Details :", rightColX + 5, currentY + 5);
+      doc
+        .moveTo(rightColX, currentY + 20)
+        .lineTo(rightColX + colWidth, currentY + 20)
+        .stroke();
+
+      // Client content
+      doc.fontSize(9).font("Times-Roman");
+      doc.text(`Company Name :`, rightColX + 5, currentY + 30);
+      doc.text(`Rajendra Emporium`, rightColX + 80, currentY + 30);
+      doc.text(`Company Address :`, rightColX + 5, currentY + 45);
+      doc.text(`Kolkata, West Bengal India`, rightColX + 80, currentY + 45);
+      doc.text(`GST Number :`, rightColX + 5, currentY + 60);
+      doc.text(`GESPR25661`, rightColX + 80, currentY + 60);
+      doc.text(`Client Name :`, rightColX + 5, currentY + 75);
+      doc.text(`Rajendra Mishra`, rightColX + 80, currentY + 75);
+      doc.text(`Client Phone :`, rightColX + 5, currentY + 90);
+      doc.text(`+917384242486`, rightColX + 80, currentY + 90);
+
+      currentY += sectionHeight + 20;
+
+      // Order Details Section
+      const fullWidth = doc.page.width - 50;
+      // Order Details header with gray background
+      doc.rect(leftColX, currentY, fullWidth, 20).fill("#D3D3D3").stroke();
+      doc.fillColor("black").fontSize(10).font("Times-Bold");
+      doc.text("Order Details :", leftColX + 5, currentY + 5);
+      doc
+        .moveTo(leftColX, currentY + 20)
+        .lineTo(leftColX + fullWidth, currentY + 20)
+        .stroke();
+
+      // Order Details content
+      doc.fontSize(9).font("Times-Roman");
+      doc.text(`Order ID :`, leftColX + 5, currentY + 30);
+      doc.text(`ghh55gf4sdc882b54sdf5`, leftColX + 80, currentY + 30);
+      doc.text(`Order Date :`, leftColX + 5, currentY + 45);
+      doc.text(`20/05/2025`, leftColX + 80, currentY + 45);
+      doc.text(`Invoice Date :`, leftColX + 5, currentY + 60);
+      doc.text(`23/05/2025`, leftColX + 80, currentY + 60);
+      doc.text(`Payment Status :`, leftColX + 5, currentY + 75);
+      doc.text(`Completed`, leftColX + 80, currentY + 75);
+
+      currentY += 100;
+
+      // Product Table Section
+      doc.rect(leftColX, currentY, fullWidth, 20).fill("#D3D3D3").stroke();
+      doc.fillColor("black").fontSize(10).font("Times-Bold");
+      doc.text("Order Details :", leftColX + 5, currentY + 5);
+      doc
+        .moveTo(leftColX, currentY + 20)
+        .lineTo(leftColX + fullWidth, currentY + 20)
+        .stroke();
+
+      currentY += 25;
+
+      // Table headers
+      const tableStartY = currentY;
+      const colWidths = [140, 80, 80, 80, 80];
+      const headers = [
+        "Product Name",
+        "Bale No.",
+        "Quantity",
+        "Unit Rate",
+        "Amount",
+      ];
+
+      doc.fontSize(9).font("Times-Bold");
+      let xPos = leftColX + 5;
+
+      // Draw grey background for table headers
+      doc
+        .rect(leftColX, tableStartY - 5, fullWidth, 15)
+        .fill("#D3D3D3")
+        .stroke();
+      doc.fillColor("black"); // Reset fill color after drawing background
+
+      headers.forEach((header, i) => {
+        doc.text(header, xPos, tableStartY);
+        xPos += colWidths[i];
+      });
+
+      currentY = tableStartY + 15;
+
+      // Table rows (12 identical rows as shown in image)
+      doc.fontSize(9).font("Times-Roman");
+      for (let i = 0; i < 12; i++) {
+        xPos = leftColX + 5;
+        doc.text("Organic Cotton Fabric", xPos, currentY);
+        xPos += colWidths[0];
+        doc.text("Bale #203", xPos, currentY);
+        xPos += colWidths[1];
+        doc.text("200 meters", xPos, currentY);
+        xPos += colWidths[2];
+        doc.text("₹ 120", xPos, currentY);
+        xPos += colWidths[3];
+        doc.text("₹ 24000", xPos, currentY);
+
+        currentY += 15;
+      }
+
+      // Footer
+      const footerY = doc.page.height - 40;
+
+      // Draw line above footer text
+      doc
+        .moveTo(leftColX, footerY - 5)
+        .lineTo(doc.page.width - leftColX, footerY - 5)
+        .stroke();
+
+      doc.fontSize(8).font("Times-Roman");
+      doc.text(
+        "This is A Claw Legaltech Server Generated Invoice and Doesn't Require Further Authentication",
+        leftColX,
+        footerY
+      );
+      doc.text("Claw Legaltech", doc.page.width - 150, footerY);
+      doc.text("Page: 1 of 2", doc.page.width - 150, footerY + 12);
+
+      // Draw rectangle around the footer section
+      doc.rect(leftColX, footerY - 10, doc.page.width - 50, 35).stroke();
+
+      doc.end();
+    } catch (error) {
+      console.error(
+        `❌ Error generating Payment Acknowledgement Receipt PDF: ${error.message}`
+      );
+      reject(error);
+    }
+  });
+};
+
 module.exports = {
   generateInvoicePDF,
   generateOrderInvoicePDF,
   generateInventoryPDF,
   generateProductPDF,
+  generatePaymentAcknowledgementReceiptPDF,
 };

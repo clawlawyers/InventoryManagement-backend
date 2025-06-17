@@ -2,7 +2,9 @@ const Order = require("../models/Order");
 const Client = require("../models/Client");
 const InventoryProduct = require("../models/InventoryProduct");
 const Payment = require("../models/Payment");
-const { generateOrderInvoicePDF } = require("../utils/pdfGenerator");
+const {
+  generatePaymentAcknowledgementReceiptPDF,
+} = require("../utils/pdfGenerator");
 const mongoose = require("mongoose");
 
 // Create a new order using inventory products
@@ -423,9 +425,46 @@ const generateOrderInvoice = async (req, res) => {
       });
     }
 
+    // Fetch the latest payment for the order to get the payment date
+    const latestPayment = await Payment.findOne({ order: orderId }).sort({
+      paymentDate: -1,
+    });
+
+    // Prepare data for PDF generation
+    const pdfData = {
+      beneficiary: {
+        companyName: order.company?.name || "N/A",
+        companyAddress: order.company?.address || "N/A",
+        gstNumber: order.company?.GSTNumber || "N/A",
+      },
+      client: {
+        companyName: order.client?.firmName || "N/A",
+        companyAddress: order.client?.address || "N/A",
+        gstNumber: order.client?.firmGSTNumber || "N/A",
+        clientName: order.client?.name || "N/A",
+        clientPhone: order.client?.phone || "N/A",
+      },
+      order: {
+        orderId: order._id.toString(),
+        orderDate: new Date(order.createdAt).toLocaleDateString("en-GB"),
+        invoiceDate: latestPayment
+          ? new Date(latestPayment.paymentDate).toLocaleDateString("en-GB")
+          : new Date().toLocaleDateString("en-GB"),
+        paymentStatus: order.paymentStatus || "N/A",
+      },
+      products: order.products.map((p) => ({
+        productName: p.inventoryProduct?.category_code || "N/A",
+        baleNo: p.inventoryProduct?.bail_number || "N/A",
+        quantity: `${p.quantity} meters`,
+        unitRate: p.unitPrice.toFixed(2),
+        amount: p.totalPrice.toFixed(2),
+      })),
+    };
+
     // Generate PDF in memory
     console.log(`📄 Generating invoice for order ${orderId}`);
-    const { buffer, filename, size } = await generateOrderInvoicePDF(order);
+    const { buffer, filename, size } =
+      await generatePaymentAcknowledgementReceiptPDF(pdfData);
 
     // Set response headers for PDF download
     res.setHeader("Content-Type", "application/pdf");
