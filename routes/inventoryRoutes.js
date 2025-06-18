@@ -7,6 +7,7 @@ const {
   downloadInventoryPDF,
   downloadProductCSV,
   downloadProductPDF,
+  deleteInventory,
 } = require("../controllers/inventoryController");
 const {
   createInventoryProduct,
@@ -39,5 +40,7 @@ router.get("/:id/download/csv", requireAuth, downloadInventoryCSV);
 router.get("/:id/download/pdf", requireAuth, downloadInventoryPDF);
 router.get("/product/:productId/download/csv", requireAuth, downloadProductCSV);
 router.get("/product/:productId/download/pdf", requireAuth, downloadProductPDF);
+
+router.delete("/delete/:id", requireAuth, deleteInventory);
 
 module.exports = router;

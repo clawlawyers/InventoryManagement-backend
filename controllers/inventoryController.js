@@ -203,6 +203,33 @@ const downloadProductPDF = async (req, res) => {
   }
 };
 
+const deleteInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const inventory = await Inventory.findById(id);
+
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory not found" });
+    }
+
+    // Delete all products associated with this inventory
+    await InventoryProduct.deleteMany({ inventory: id });
+
+    // Remove inventory reference from the company
+    await Company.findByIdAndUpdate(inventory.company, {
+      $unset: { inventory: "" },
+    });
+
+    await Inventory.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "Inventory deleted successfully" });
+  } catch (error) {
+    console.error("❌ Error deleting inventory:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createInventory,
   getProductByProductId,
@@ -210,4 +237,5 @@ module.exports = {
   downloadInventoryPDF,
   downloadProductCSV,
   downloadProductPDF,
+  deleteInventory,
 };
