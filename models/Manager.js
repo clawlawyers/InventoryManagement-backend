@@ -31,8 +31,8 @@ const ManagerSchema = new Schema({
     coins: { type: Number, default: 100 },
     plan: {
       type: String,
-      enum: ["custom", "monthly"],
-      default: "monthly",
+      enum: ["default", "starter", "pro", "elite", "custom"],
+      default: "default", // New default plan
     },
     planStartDate: {
       type: Date,

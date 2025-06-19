@@ -12,7 +12,12 @@ const getAllManagers = async (req, res) => {
 
 const createManager = async (req, res) => {
   try {
-    const manager = new Manager(req.body);
+    const managerData = { ...req.body };
+    // Ensure new managers get the "default" plan
+    if (!managerData.wallet || !managerData.wallet.plan) {
+      managerData.wallet = { ...managerData.wallet, plan: "default" };
+    }
+    const manager = new Manager(managerData);
     await manager.save();
     res.status(201).json(manager);
   } catch (err) {

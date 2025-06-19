@@ -69,3 +69,4 @@ docker-compose.override.yml
 .docker/
 Dockerfile.local
 Dockerfile.dev
+mcp-servers/perplexity-mcp
