@@ -17,7 +17,7 @@ const PLAN_DETAILS = {
   starter: { price: 1500, coins: 250, validityDays: 30 },
   pro: { price: 3000, coins: 500, validityDays: 30 },
   elite: { price: 6000, coins: 1000, validityDays: 30 },
-  custom: { price: null, coins: null, validityDays: null }, // Custom plan has flexible amount/coins
+  custom: { price: null, coins: null, validityDays: 30 }, // Custom plan has flexible amount/coins, default 30 days validity. Price and coins are determined by amount.
 };
 
 // Function to create a new Wallet Top-Up Order and initiate Razorpay payment
@@ -166,15 +166,55 @@ const verifyWalletTopUpPayment = async (req, res) => {
       const manager = await Manager.findById(topUpOrder.manager);
       if (manager) {
         let coinsToAdd;
+        let newPlanPrice;
+
+        // Determine coins to add and the new plan's price
         if (planType === "custom") {
           coinsToAdd = amountPaidInRupees / 6; // 1 coin = 6 rupee for custom
+          newPlanPrice = amountPaidInRupees; // For custom, price is the amount paid
         } else {
           coinsToAdd = PLAN_DETAILS[planType].coins; // Fixed coins for plans
+          newPlanPrice = PLAN_DETAILS[planType].price; // For fixed plans, price is from PLAN_DETAILS
+        }
+
+        // Apply plan upgrade logic (for all plans including custom)
+        const currentPlan = manager.wallet.plan;
+        let effectiveCurrentPlanPrice = 0;
+
+        if (currentPlan === "custom") {
+          // If current plan is custom, use its stored planPrice for comparison
+          effectiveCurrentPlanPrice = manager.wallet.planPrice || 0;
+        } else if (PLAN_DETAILS[currentPlan]) {
+          // For other defined plans, use their price from PLAN_DETAILS
+          effectiveCurrentPlanPrice = PLAN_DETAILS[currentPlan].price;
+        }
+        // If currentPlan is 'default' or undefined, effectiveCurrentPlanPrice remains 0
+
+        // Check if the new plan is lower in price
+        if (newPlanPrice < effectiveCurrentPlanPrice) {
+          return res.status(400).json({
+            message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
+          });
         }
 
         manager.wallet.coins += coinsToAdd;
         manager.wallet.plan = planType; // Update manager's plan
         manager.wallet.planStartDate = new Date(); // Set new plan start date
+        manager.wallet.planPrice = newPlanPrice; // Store the price of the new plan
+
+        // Calculate expiry date
+        const validityDays = PLAN_DETAILS[planType].validityDays;
+        if (validityDays) {
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + validityDays);
+          manager.wallet.expiryDate = expiryDate;
+        } else if (planType === "custom") {
+          // Ensure custom plan also gets an expiry date if validityDays is not explicitly set in PLAN_DETAILS
+          const defaultCustomValidityDays = 30; // Or derive from amountPaidInRupees if needed
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + defaultCustomValidityDays);
+          manager.wallet.expiryDate = expiryDate;
+        }
         await manager.save();
       } else {
         console.warn(
@@ -202,7 +242,58 @@ const verifyWalletTopUpPayment = async (req, res) => {
   }
 };
 
+// Function to add credit to a manager's wallet without changing their plan or expiry
+const addCreditToWallet = async (req, res) => {
+  try {
+    const { managerId, amount } = req.body;
+    const { user, type } = req.user; // Assuming user is authenticated
+
+    // Validate input
+    if (!managerId || !amount) {
+      return res
+        .status(400)
+        .json({ message: "Manager ID and amount are required." });
+    }
+    if (amount <= 0) {
+      return res.status(400).json({ message: "Amount must be positive." });
+    }
+    if (!mongoose.Types.ObjectId.isValid(managerId)) {
+      return res.status(400).json({ message: "Invalid Manager ID." });
+    }
+
+    // Ensure the authenticated user is an admin (or manager for their own wallet if allowed)
+    // For simplicity, let's assume only admin can add credit directly for now.
+    if (type !== "admin") {
+      return res.status(403).json({
+        message: "Unauthorized: Only administrators can add credit directly.",
+      });
+    }
+
+    const manager = await Manager.findById(managerId);
+    if (!manager) {
+      return res.status(404).json({ message: "Manager not found." });
+    }
+
+    const coinsToAdd = amount / 6; // Assuming 1 coin = 6 rupee for direct credit addition
+
+    manager.wallet.coins += coinsToAdd;
+    await manager.save();
+
+    res.status(200).json({
+      message: "Credit added to wallet successfully.",
+      managerWallet: manager.wallet,
+    });
+  } catch (error) {
+    console.error("Error adding credit to wallet:", error);
+    res.status(500).json({
+      message: "Failed to add credit to wallet.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createWalletTopUpOrder,
   verifyWalletTopUpPayment,
+  addCreditToWallet,
 };

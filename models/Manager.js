@@ -38,6 +38,14 @@ const ManagerSchema = new Schema({
       type: Date,
       default: Date.now,
     },
+    expiryDate: {
+      type: Date,
+      required: false,
+    },
+    planPrice: {
+      type: Number,
+      required: false,
+    },
   },
   companies: [
     {
