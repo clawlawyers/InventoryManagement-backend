@@ -71,6 +71,7 @@ router.post(
         category_code,
         lot_number,
         stock_amount,
+        design_code,
         image: result.secure_url,
       });
 
