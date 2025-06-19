@@ -7,12 +7,6 @@ const rootDir = path.resolve(__dirname, "..");
 const uploadsDir = path.join(rootDir, "uploads");
 const invoicesDir = path.join(uploadsDir, "invoices");
 
-console.log("📁 Directory paths:", {
-  rootDir,
-  uploadsDir,
-  invoicesDir,
-});
-
 // Create uploads directory if it doesn't exist
 try {
   if (!fs.existsSync(uploadsDir)) {
@@ -1006,6 +1000,28 @@ const generatePaymentAcknowledgementReceiptPDF = async (
   data,
   pageSize = "A4"
 ) => {
+  // Helper to draw footer on every page
+  function drawFooter(doc, pageNum, pageCount) {
+    const leftColX = 25;
+    const footerY = doc.page.height - 40;
+    doc
+      .moveTo(leftColX, footerY - 5)
+      .lineTo(doc.page.width - leftColX, footerY - 5)
+      .stroke();
+    doc.fontSize(8).font("Times-Roman");
+    doc.text(
+      "This is A Claw Legaltech Server Generated Invoice and Doesn't Require Further Authentication",
+      leftColX,
+      footerY
+    );
+    doc.text("Claw Legaltech", doc.page.width - 150, footerY);
+    doc.text(
+      `Page: ${pageNum} of ${pageCount}`,
+      doc.page.width - 150,
+      footerY + 12
+    );
+  }
+
   return new Promise((resolve, reject) => {
     try {
       console.log(
@@ -1212,7 +1228,7 @@ const generatePaymentAcknowledgementReceiptPDF = async (
         currentY += 15;
       }
 
-      // Force a new page for Invoice Amount Details section
+      // Force Invoice Amount Details to always start on a new (second) page
       doc.addPage();
       currentY = 50;
 
@@ -1259,27 +1275,17 @@ const generatePaymentAcknowledgementReceiptPDF = async (
       doc.text(`₹ ${totalPayable.toFixed(2)}`, leftColX + 250, currentY);
       currentY += 30;
 
-      // Footer
-      const footerY = doc.page.height - 40;
-      // Draw line above footer text
-      doc
-        .moveTo(leftColX, footerY - 5)
-        .lineTo(doc.page.width - leftColX, footerY - 5)
-        .stroke();
-
-      doc.fontSize(8).font("Times-Roman");
-      doc.text(
-        "This is A Claw Legaltech Server Generated Invoice and Doesn't Require Further Authentication",
-        leftColX,
-        footerY
-      );
-      doc.text("Claw Legaltech", doc.page.width - 150, footerY);
-      doc.text("Page: 2 of 2", doc.page.width - 150, footerY + 12); // Updated page number
-
-      // Draw rectangle around the footer section
-      doc.rect(leftColX, footerY - 10, doc.page.width - 50, 35).stroke();
-
+      // Footer will be drawn on every page after doc.end()
       doc.end();
+
+      // Draw footer on every page after PDF is finalized
+      doc.once("end", () => {
+        const range = doc.bufferedPageRange(); // { start: 0, count: n }
+        for (let i = range.start; i < range.start + range.count; i++) {
+          doc.switchToPage(i);
+          drawFooter(doc, i + 1, range.count);
+        }
+      });
     } catch (error) {
       console.error(
         `❌ Error generating Payment Acknowledgement Receipt PDF: ${error.message}`

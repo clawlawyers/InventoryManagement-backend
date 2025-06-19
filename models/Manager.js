@@ -27,6 +27,18 @@ const ManagerSchema = new Schema({
     type: String,
     required: true,
   },
+  wallet: {
+    coins: { type: Number, default: 100 },
+    plan: {
+      type: String,
+      enum: ["custom", "monthly"],
+      default: "monthly",
+    },
+    planStartDate: {
+      type: Date,
+      default: Date.now,
+    },
+  },
   companies: [
     {
       type: Schema.Types.ObjectId,

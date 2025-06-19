@@ -148,6 +148,7 @@ const managerLogin = async (req, res) => {
         email: manager.email,
         companies: manager.companies,
         organizationName: manager.organisationName,
+        wallet: manager.wallet,
       },
     });
   } catch (err) {
@@ -273,6 +274,7 @@ const managerSignup = async (req, res) => {
         email: manager.email,
         type: "manager",
         companies: [],
+        wallet: manager.wallet,
       },
     });
   } catch (err) {
@@ -297,6 +299,7 @@ const getVerify = async (req, res) => {
           type: "manager",
           email: manager.email,
           companies: manager.companies,
+          wallet: manager.wallet,
         },
       });
       res.json({
@@ -308,6 +311,7 @@ const getVerify = async (req, res) => {
           email: manager.email,
           companies: manager.companies,
           organizationName: manager.organisationName,
+          wallet: manager.wallet,
         },
       });
     } else if (decoded.type === "salesman") {
