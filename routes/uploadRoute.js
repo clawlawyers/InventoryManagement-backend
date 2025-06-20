@@ -52,6 +52,7 @@ router.post(
         category_code,
         lot_number,
         stock_amount,
+        design_code,
         inventoryId,
       } = req.body;
 
@@ -91,9 +92,10 @@ router.post(
       });
     } catch (err) {
       console.error("Upload error:", err);
-      res
-        .status(500)
-        .json({ error: "Image upload or product creation failed" });
+      res.status(500).json({
+        error: "Image upload or product creation failed",
+        details: err.message,
+      });
     }
   }
 );
@@ -150,7 +152,9 @@ router.post(
       });
     } catch (err) {
       console.error("Upload error:", err);
-      res.status(500).json({ error: "Image upload failed" });
+      res
+        .status(500)
+        .json({ error: "Image upload failed", details: err.message });
     }
   }
 );
