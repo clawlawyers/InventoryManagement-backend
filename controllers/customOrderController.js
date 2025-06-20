@@ -11,6 +11,7 @@ const createCustomOrder = async (req, res) => {
       items,
       discountPercentage = 0,
       discountAmount = 0,
+      gstPercentage = 0,
     } = req.body;
 
     // Basic validation
@@ -103,14 +104,20 @@ const createCustomOrder = async (req, res) => {
     }
 
     // Calculate final total with discount
-    let finalTotalAmount = subTotal;
+    // Calculate final total with discount
+    let amountAfterDiscount = subTotal;
     if (discountPercentage > 0) {
-      finalTotalAmount -= subTotal * (discountPercentage / 100);
+      amountAfterDiscount -= subTotal * (discountPercentage / 100);
     }
     if (discountAmount > 0) {
-      finalTotalAmount -= discountAmount;
+      amountAfterDiscount -= discountAmount;
     }
-    finalTotalAmount = Math.max(0, finalTotalAmount); // Ensure total doesn't go below zero
+    amountAfterDiscount = Math.max(0, amountAfterDiscount); // Ensure amount doesn't go below zero
+
+    let finalTotalAmount = amountAfterDiscount;
+    if (gstPercentage > 0) {
+      finalTotalAmount += amountAfterDiscount * (gstPercentage / 100);
+    }
 
     const newCustomOrder = new CustomOrder({
       billingFrom,
@@ -121,6 +128,7 @@ const createCustomOrder = async (req, res) => {
       dueAmount: finalTotalAmount,
       discountPercentage,
       discountAmount,
+      gstPercentage,
     });
 
     await newCustomOrder.save();
@@ -250,6 +258,16 @@ const generateCustomOrderInvoice = async (req, res) => {
     }
     if (order.discountAmount > 0) {
       doc.text(`Discount Amount: ₹${order.discountAmount.toFixed(2)}`);
+    }
+    if (order.gstPercentage > 0) {
+      doc.text(`GST Percentage: ${order.gstPercentage}%`);
+      // Recalculate GST amount for display in PDF if needed, or rely on stored totalAmount
+      const amountBeforeGST =
+        subTotal -
+        (subTotal * (order.discountPercentage || 0)) / 100 -
+        (order.discountAmount || 0);
+      const gstAmountForDisplay = amountBeforeGST * (order.gstPercentage / 100);
+      doc.text(`GST Amount: ₹${gstAmountForDisplay.toFixed(2)}`);
     }
     doc
       .fontSize(14)
@@ -453,18 +471,24 @@ const updateCustomOrder = async (req, res) => {
       (sum, item) => sum + item.quantity * item.rate,
       0
     );
-    let newTotalAmount = currentSubTotal;
 
+    let amountAfterDiscount = currentSubTotal;
     const discountPercentage = customOrder.discountPercentage || 0;
     const discountAmount = customOrder.discountAmount || 0;
 
     if (discountPercentage > 0) {
-      newTotalAmount -= currentSubTotal * (discountPercentage / 100);
+      amountAfterDiscount -= currentSubTotal * (discountPercentage / 100);
     }
     if (discountAmount > 0) {
-      newTotalAmount -= discountAmount;
+      amountAfterDiscount -= discountAmount;
     }
-    newTotalAmount = Math.max(0, newTotalAmount);
+    amountAfterDiscount = Math.max(0, amountAfterDiscount);
+
+    let newTotalAmount = amountAfterDiscount;
+    const gstPercentage = customOrder.gstPercentage || 0;
+    if (gstPercentage > 0) {
+      newTotalAmount += amountAfterDiscount * (gstPercentage / 100);
+    }
 
     // Adjust dueAmount based on the change in totalAmount
     const totalAmountDifference = newTotalAmount - customOrder.totalAmount;

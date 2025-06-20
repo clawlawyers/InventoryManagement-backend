@@ -145,6 +145,12 @@ const customOrderSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  gstPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
+  },
   items: [itemSchema], // Array of item sub-documents
   payments: [customOrderPaymentSchema], // Embedded payments for custom orders
   createdAt: {
