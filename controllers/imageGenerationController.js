@@ -245,6 +245,39 @@ const tileImageGrid = async (req, res) => {
   }
 };
 
+// 6. Convert to EPS Controller
+const convertToEps = async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: "No image URL provided" });
+    }
+
+    const formData = new FormData();
+    formData.append("image", image);
+
+    // Forward to image service
+    const result = await forwardToImageService("convert_to_eps", formData);
+
+    if (!result.success) {
+      throw result.error;
+    }
+
+    // Assuming the image service returns the EPS data directly or a URL to it
+    // If it returns a URL, you might need to download it and then send.
+    // For now, assuming it returns the EPS data in the response.
+    // If the response is a file, you might need to set appropriate headers.
+    res.status(200).json({
+      message: "Image converted to EPS successfully",
+      data: result.data,
+    });
+  } catch (err) {
+    console.error("Image to EPS conversion error:", err);
+    res.status(500).json({ error: "Image to EPS conversion failed" });
+  }
+};
+
 module.exports = {
   createImage,
   editImage,
@@ -252,4 +285,5 @@ module.exports = {
   editColors,
   tileImageGrid,
   uploadImageToCloudinary,
+  convertToEps,
 };

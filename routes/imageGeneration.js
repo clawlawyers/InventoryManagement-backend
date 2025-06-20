@@ -7,6 +7,7 @@ const {
   createIndex,
   editColors,
   tileImageGrid,
+  convertToEps,
 } = require("../controllers/imageGenerationController");
 const { requireAuth } = require("../middleware/requireAuth");
 
@@ -24,5 +25,6 @@ router.post("/edit-image", upload.single("image"), editImage);
 router.post("/create-index", upload.single("image"), createIndex);
 router.post("/edit-colors", upload.single("image"), editColors);
 router.post("/tile-image-grid", upload.single("image"), tileImageGrid);
+router.post("/convert_to_eps", upload.none(), convertToEps);
 
 module.exports = router;
