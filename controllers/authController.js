@@ -146,6 +146,8 @@ const managerLogin = async (req, res) => {
         name: manager.name,
         type: "manager",
         email: manager.email,
+        phoneNumber: manager.phoneNumber,
+        GSTNumber: manager.GSTNumber,
         companies: manager.companies,
         organizationName: manager.organisationName,
         wallet: manager.wallet,
@@ -298,17 +300,8 @@ const getVerify = async (req, res) => {
           name: manager.name,
           type: "manager",
           email: manager.email,
-          companies: manager.companies,
-          wallet: manager.wallet,
-        },
-      });
-      res.json({
-        token,
-        user: {
-          id: manager._id,
-          name: manager.name,
-          type: "manager",
-          email: manager.email,
+          phoneNumber: manager.phoneNumber,
+          GSTNumber: manager.GSTNumber,
           companies: manager.companies,
           organizationName: manager.organisationName,
           wallet: manager.wallet,
