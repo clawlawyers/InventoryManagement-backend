@@ -138,7 +138,10 @@ const getManagerWalletDetails = async (req, res) => {
       return res.status(404).json({ message: "Manager not found" });
     }
 
-    res.status(200).json({ wallet: manager.wallet });
+    res.status(200).json({
+      wallet: manager.wallet,
+      planType: manager.wallet.plan,
+    });
   } catch (error) {
     console.error("Error fetching manager wallet details:", error);
     res.status(500).json({ message: "Server error" });
