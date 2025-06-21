@@ -18,6 +18,7 @@ const PLAN_DETAILS = {
   pro: { price: 3000, coins: 500, validityDays: 30 },
   elite: { price: 6000, coins: 1000, validityDays: 30 },
   custom: { price: null, coins: null, validityDays: 30 }, // Custom plan has flexible amount/coins, default 30 days validity. Price and coins are determined by amount.
+  add_credit_only: { price: null, coins: null, validityDays: null }, // Special type for adding credit without changing plan
 };
 
 // Function to create a new Wallet Top-Up Order and initiate Razorpay payment
@@ -42,6 +43,14 @@ const createWalletTopUpOrder = async (req, res) => {
     // Validate planType if provided
     if (planType && !Object.keys(PLAN_DETAILS).includes(planType)) {
       return res.status(400).json({ message: "Invalid plan type provided." });
+    }
+    // Prevent using 'add_credit_only' directly for plan purchases
+    if (planType === "add_credit_only") {
+      return res
+        .status(400)
+        .json({
+          message: "'add_credit_only' is not a valid plan for direct purchase.",
+        });
     }
 
     // If a specific plan is chosen, validate amount against plan price
@@ -145,7 +154,8 @@ const verifyWalletTopUpPayment = async (req, res) => {
       }
 
       // Validate paid amount against plan price if applicable
-      if (planType !== "custom") {
+      if (planType !== "custom" && planType !== "add_credit_only") {
+        // Exclude add_credit_only from price validation
         const expectedPrice = PLAN_DETAILS[planType].price;
         if (amountPaidInRupees !== expectedPrice) {
           console.warn(
@@ -169,9 +179,10 @@ const verifyWalletTopUpPayment = async (req, res) => {
         let newPlanPrice;
 
         // Determine coins to add and the new plan's price
-        if (planType === "custom") {
-          coinsToAdd = amountPaidInRupees / 6; // 1 coin = 6 rupee for custom
-          newPlanPrice = amountPaidInRupees; // For custom, price is the amount paid
+        if (planType === "custom" || planType === "add_credit_only") {
+          // For custom and add_credit_only, coins are based on amount
+          coinsToAdd = amountPaidInRupees / 6; // 1 coin = 6 rupee for custom/add_credit_only
+          newPlanPrice = amountPaidInRupees; // For custom/add_credit_only, price is the amount paid
         } else {
           coinsToAdd = PLAN_DETAILS[planType].coins; // Fixed coins for plans
           newPlanPrice = PLAN_DETAILS[planType].price; // For fixed plans, price is from PLAN_DETAILS
@@ -190,31 +201,36 @@ const verifyWalletTopUpPayment = async (req, res) => {
         }
         // If currentPlan is 'default' or undefined, effectiveCurrentPlanPrice remains 0
 
-        // Check if the new plan is lower in price
-        if (newPlanPrice < effectiveCurrentPlanPrice) {
-          return res.status(400).json({
-            message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
-          });
+        // Only update plan details if it's not an "add_credit_only" transaction
+        if (planType !== "add_credit_only") {
+          // Check if the new plan is lower in price
+          if (newPlanPrice < effectiveCurrentPlanPrice) {
+            return res.status(400).json({
+              message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
+            });
+          }
+          manager.wallet.plan = planType; // Update manager's plan
+          manager.wallet.planStartDate = new Date(); // Set new plan start date
+          manager.wallet.planPrice = newPlanPrice; // Store the price of the new plan
+
+          // Calculate expiry date
+          const validityDays = PLAN_DETAILS[planType].validityDays;
+          if (validityDays) {
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + validityDays);
+            manager.wallet.expiryDate = expiryDate;
+          } else if (planType === "custom") {
+            // Ensure custom plan also gets an expiry date if validityDays is not explicitly set in PLAN_DETAILS
+            const defaultCustomValidityDays = 30; // Or derive from amountPaidInRupees if needed
+            const expiryDate = new Date();
+            expiryDate.setDate(
+              expiryDate.getDate() + defaultCustomValidityDays
+            );
+            manager.wallet.expiryDate = expiryDate;
+          }
         }
 
-        manager.wallet.coins += coinsToAdd;
-        manager.wallet.plan = planType; // Update manager's plan
-        manager.wallet.planStartDate = new Date(); // Set new plan start date
-        manager.wallet.planPrice = newPlanPrice; // Store the price of the new plan
-
-        // Calculate expiry date
-        const validityDays = PLAN_DETAILS[planType].validityDays;
-        if (validityDays) {
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + validityDays);
-          manager.wallet.expiryDate = expiryDate;
-        } else if (planType === "custom") {
-          // Ensure custom plan also gets an expiry date if validityDays is not explicitly set in PLAN_DETAILS
-          const defaultCustomValidityDays = 30; // Or derive from amountPaidInRupees if needed
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + defaultCustomValidityDays);
-          manager.wallet.expiryDate = expiryDate;
-        }
+        manager.wallet.coins += coinsToAdd; // Always add coins
         await manager.save();
       } else {
         console.warn(
@@ -242,17 +258,17 @@ const verifyWalletTopUpPayment = async (req, res) => {
   }
 };
 
-// Function to add credit to a manager's wallet without changing their plan or expiry
+// Function to add credit to a manager's wallet and initiate Razorpay payment
 const addCreditToWallet = async (req, res) => {
   try {
-    const { managerId, amount } = req.body;
+    const { managerId, amount, currency } = req.body; // planType is implicitly "add_credit_only"
     const { user, type } = req.user; // Assuming user is authenticated
 
     // Validate input
-    if (!managerId || !amount) {
+    if (!managerId || !amount || !currency) {
       return res
         .status(400)
-        .json({ message: "Manager ID and amount are required." });
+        .json({ message: "Manager ID, amount, and currency are required." });
     }
     if (amount <= 0) {
       return res.status(400).json({ message: "Amount must be positive." });
@@ -261,11 +277,15 @@ const addCreditToWallet = async (req, res) => {
       return res.status(400).json({ message: "Invalid Manager ID." });
     }
 
-    // Ensure the authenticated user is an admin (or manager for their own wallet if allowed)
-    // For simplicity, let's assume only admin can add credit directly for now.
-    if (type !== "admin") {
+    // Ensure the authenticated user is the manager or an admin
+    if (type === "manager" && user._id.toString() !== managerId) {
       return res.status(403).json({
-        message: "Unauthorized: Only administrators can add credit directly.",
+        message: "Unauthorized: You can only add credit to your own wallet.",
+      });
+    } else if (type !== "admin" && type !== "manager") {
+      return res.status(403).json({
+        message:
+          "Unauthorized: Only administrators or the manager themselves can add credit.",
       });
     }
 
@@ -274,19 +294,41 @@ const addCreditToWallet = async (req, res) => {
       return res.status(404).json({ message: "Manager not found." });
     }
 
-    const coinsToAdd = amount / 6; // Assuming 1 coin = 6 rupee for direct credit addition
+    // Create a new WalletTopUpOrder in your database
+    const newTopUpOrder = new WalletTopUpOrder({
+      manager: managerId,
+      amount,
+      currency,
+      paymentStatus: "pending",
+      notes: { planType: "add_credit_only" }, // Explicitly set planType for this type of transaction
+    });
+    await newTopUpOrder.save();
 
-    manager.wallet.coins += coinsToAdd;
-    await manager.save();
+    // Create Razorpay order
+    const options = {
+      amount: amount * 100, // amount in paise
+      currency,
+      receipt: `wtup_${newTopUpOrder._id.toString().slice(-15)}`,
+      notes: {
+        topUpOrderId: newTopUpOrder._id.toString(),
+        type: "wallet_topup",
+        planType: "add_credit_only", // Pass this to Razorpay notes
+      },
+    };
 
-    res.status(200).json({
-      message: "Credit added to wallet successfully.",
-      managerWallet: manager.wallet,
+    const razorpayOrder = await razorpay.orders.create(options);
+
+    res.status(201).json({
+      message: "Wallet credit order created and Razorpay payment initiated.",
+      topUpOrder: newTopUpOrder,
+      razorpayOrderId: razorpayOrder.id,
+      currency: razorpayOrder.currency,
+      amount: razorpayOrder.amount / 100,
     });
   } catch (error) {
-    console.error("Error adding credit to wallet:", error);
+    console.error("Error initiating wallet credit payment:", error);
     res.status(500).json({
-      message: "Failed to add credit to wallet.",
+      message: "Failed to initiate wallet credit payment.",
       error: error.message,
     });
   }
@@ -340,7 +382,7 @@ const handleRazorpayWebhook = async (req, res) => {
           }
 
           // Validate paid amount against plan price if applicable
-          if (planType !== "custom") {
+          if (planType !== "custom" && planType !== "add_credit_only") {
             const expectedPrice = PLAN_DETAILS[planType].price;
             if (amountPaidInRupees !== expectedPrice) {
               console.warn(
@@ -366,9 +408,9 @@ const handleRazorpayWebhook = async (req, res) => {
             let coinsToAdd;
             let newPlanPrice;
 
-            if (planType === "custom") {
-              coinsToAdd = amountPaidInRupees / 6;
-              newPlanPrice = amountPaidInRupees;
+            if (planType === "custom" || planType === "add_credit_only") {
+              coinsToAdd = amountPaidInPaise / 6;
+              newPlanPrice = amountPaidInPaise / 100;
             } else {
               coinsToAdd = PLAN_DETAILS[planType].coins;
               newPlanPrice = PLAN_DETAILS[planType].price;
@@ -383,34 +425,34 @@ const handleRazorpayWebhook = async (req, res) => {
               effectiveCurrentPlanPrice = PLAN_DETAILS[currentPlan].price;
             }
 
-            if (newPlanPrice < effectiveCurrentPlanPrice) {
-              console.warn(
-                `Webhook: Cannot upgrade to a lower priced plan for manager ${manager._id}. Current: ${currentPlan} (${effectiveCurrentPlanPrice}), New: ${planType} (${newPlanPrice}).`
-              );
-              // This scenario should ideally be prevented at order creation, but good to have a fallback
-              return res.status(400).json({
-                message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
-              });
-            }
+            if (planType !== "add_credit_only") {
+              if (newPlanPrice < effectiveCurrentPlanPrice) {
+                console.warn(
+                  `Webhook: Cannot upgrade to a lower priced plan for manager ${manager._id}. Current: ${currentPlan} (${effectiveCurrentPlanPrice}), New: ${planType} (${newPlanPrice}).`
+                );
+                return res.status(400).json({
+                  message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
+                });
+              }
+              manager.wallet.plan = planType;
+              manager.wallet.planStartDate = new Date();
+              manager.wallet.planPrice = newPlanPrice;
 
+              const validityDays = PLAN_DETAILS[planType].validityDays;
+              if (validityDays) {
+                const expiryDate = new Date();
+                expiryDate.setDate(expiryDate.getDate() + validityDays);
+                manager.wallet.expiryDate = expiryDate;
+              } else if (planType === "custom") {
+                const defaultCustomValidityDays = 30;
+                const expiryDate = new Date();
+                expiryDate.setDate(
+                  expiryDate.getDate() + defaultCustomValidityDays
+                );
+                manager.wallet.expiryDate = expiryDate;
+              }
+            }
             manager.wallet.coins += coinsToAdd;
-            manager.wallet.plan = planType;
-            manager.wallet.planStartDate = new Date();
-            manager.wallet.planPrice = newPlanPrice;
-
-            const validityDays = PLAN_DETAILS[planType].validityDays;
-            if (validityDays) {
-              const expiryDate = new Date();
-              expiryDate.setDate(expiryDate.getDate() + validityDays);
-              manager.wallet.expiryDate = expiryDate;
-            } else if (planType === "custom") {
-              const defaultCustomValidityDays = 30;
-              const expiryDate = new Date();
-              expiryDate.setDate(
-                expiryDate.getDate() + defaultCustomValidityDays
-              );
-              manager.wallet.expiryDate = expiryDate;
-            }
             await manager.save();
             console.log(
               `Webhook: Manager ${manager._id} wallet updated successfully.`
