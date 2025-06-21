@@ -292,8 +292,178 @@ const addCreditToWallet = async (req, res) => {
   }
 };
 
+/*
+// Webhook to handle Razorpay payment status updates
+const handleRazorpayWebhook = async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET; // Define a webhook secret in your .env
+
+  const shasum = crypto.createHmac("sha256", secret);
+  shasum.update(JSON.stringify(req.body));
+  const digest = shasum.digest("hex");
+
+  if (digest === req.headers["x-razorpay-signature"]) {
+    const event = req.body.event;
+    const payload = req.body.payload;
+
+    console.log(`Received Razorpay webhook event: ${event}`);
+
+    try {
+      switch (event) {
+        case "payment.captured":
+          // Payment was successful
+          const payment = payload.payment.entity;
+          const razorpayOrderId = payment.order_id;
+          const razorpayPaymentId = payment.id;
+          const amountPaidInPaise = payment.amount;
+          const amountPaidInRupees = amountPaidInPaise / 100;
+          const planType = payment.notes.planType || "custom";
+          const topUpOrderId = payment.notes.topUpOrderId;
+
+          const topUpOrder = await WalletTopUpOrder.findById(topUpOrderId);
+
+          if (!topUpOrder) {
+            console.error(
+              `Webhook: Wallet top-up order ${topUpOrderId} not found.`
+            );
+            return res
+              .status(404)
+              .json({ message: "Wallet top-up order not found." });
+          }
+
+          if (topUpOrder.paymentStatus === "paid") {
+            console.log(
+              `Webhook: Payment for order ${topUpOrderId} already processed.`
+            );
+            return res
+              .status(200)
+              .json({ message: "Payment already processed." });
+          }
+
+          // Validate paid amount against plan price if applicable
+          if (planType !== "custom") {
+            const expectedPrice = PLAN_DETAILS[planType].price;
+            if (amountPaidInRupees !== expectedPrice) {
+              console.warn(
+                `Webhook: Amount mismatch for ${planType} plan. Expected: ${expectedPrice}, Paid: ${amountPaidInRupees}`
+              );
+              // You might want to handle this as a failed payment or flag it
+              topUpOrder.paymentStatus = "failed"; // Mark as failed due to amount mismatch
+              topUpOrder.notes.webhookError = `Amount mismatch. Expected ${expectedPrice}, received ${amountPaidInRupees}.`;
+              await topUpOrder.save();
+              return res.status(400).json({
+                message: `Amount mismatch for ${planType} plan. Expected ${expectedPrice}, but received ${amountPaidInRupees}.`,
+              });
+            }
+          }
+
+          topUpOrder.paymentStatus = "paid";
+          topUpOrder.razorpayPaymentId = razorpayPaymentId;
+          topUpOrder.razorpayOrderId = razorpayOrderId;
+          await topUpOrder.save();
+
+          const manager = await Manager.findById(topUpOrder.manager);
+          if (manager) {
+            let coinsToAdd;
+            let newPlanPrice;
+
+            if (planType === "custom") {
+              coinsToAdd = amountPaidInRupees / 6;
+              newPlanPrice = amountPaidInRupees;
+            } else {
+              coinsToAdd = PLAN_DETAILS[planType].coins;
+              newPlanPrice = PLAN_DETAILS[planType].price;
+            }
+
+            const currentPlan = manager.wallet.plan;
+            let effectiveCurrentPlanPrice = 0;
+
+            if (currentPlan === "custom") {
+              effectiveCurrentPlanPrice = manager.wallet.planPrice || 0;
+            } else if (PLAN_DETAILS[currentPlan]) {
+              effectiveCurrentPlanPrice = PLAN_DETAILS[currentPlan].price;
+            }
+
+            if (newPlanPrice < effectiveCurrentPlanPrice) {
+              console.warn(
+                `Webhook: Cannot upgrade to a lower priced plan for manager ${manager._id}. Current: ${currentPlan} (${effectiveCurrentPlanPrice}), New: ${planType} (${newPlanPrice}).`
+              );
+              // This scenario should ideally be prevented at order creation, but good to have a fallback
+              return res.status(400).json({
+                message: `Cannot upgrade to a lower priced plan. Current plan: ${currentPlan} (Price: ${effectiveCurrentPlanPrice}), New plan: ${planType} (Price: ${newPlanPrice}).`,
+              });
+            }
+
+            manager.wallet.coins += coinsToAdd;
+            manager.wallet.plan = planType;
+            manager.wallet.planStartDate = new Date();
+            manager.wallet.planPrice = newPlanPrice;
+
+            const validityDays = PLAN_DETAILS[planType].validityDays;
+            if (validityDays) {
+              const expiryDate = new Date();
+              expiryDate.setDate(expiryDate.getDate() + validityDays);
+              manager.wallet.expiryDate = expiryDate;
+            } else if (planType === "custom") {
+              const defaultCustomValidityDays = 30;
+              const expiryDate = new Date();
+              expiryDate.setDate(
+                expiryDate.getDate() + defaultCustomValidityDays
+              );
+              manager.wallet.expiryDate = expiryDate;
+            }
+            await manager.save();
+            console.log(
+              `Webhook: Manager ${manager._id} wallet updated successfully.`
+            );
+          } else {
+            console.warn(
+              `Webhook: Manager ${topUpOrder.manager} not found for top-up order ${topUpOrderId}. Wallet not updated.`
+            );
+          }
+          break;
+
+        case "payment.failed":
+          const failedPayment = payload.payment.entity;
+          const failedTopUpOrderId = failedPayment.notes.topUpOrderId;
+
+          const failedTopUpOrder = await WalletTopUpOrder.findById(
+            failedTopUpOrderId
+          );
+          if (failedTopUpOrder && failedTopUpOrder.paymentStatus !== "paid") {
+            failedTopUpOrder.paymentStatus = "failed";
+            failedTopUpOrder.razorpayPaymentId = failedPayment.id;
+            failedTopUpOrder.razorpayOrderId = failedPayment.order_id;
+            failedTopUpOrder.notes.failureReason =
+              failedPayment.error_description || "Payment failed";
+            await failedTopUpOrder.save();
+            console.log(
+              `Webhook: Payment for order ${failedTopUpOrderId} marked as failed.`
+            );
+          }
+          break;
+
+        // Add other event types as needed (e.g., refund, disputed)
+        default:
+          console.log(`Webhook: Unhandled event type: ${event}`);
+          break;
+      }
+      res.status(200).json({ status: "ok" });
+    } catch (error) {
+      console.error("Error processing Razorpay webhook:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to process webhook.", error: error.message });
+    }
+  } else {
+    console.warn("Razorpay webhook signature mismatch.");
+    res.status(403).json({ message: "Invalid signature." });
+  }
+};
+*/
+
 module.exports = {
   createWalletTopUpOrder,
   verifyWalletTopUpPayment,
   addCreditToWallet,
+  // handleRazorpayWebhook, // Commented out for now
 };
